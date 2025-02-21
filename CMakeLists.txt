@@ -41,7 +41,6 @@ add_subdirectory(modules/clap-juce-extensions EXCLUDE_FROM_ALL)
 
 # Add any other modules you want modules here, before the juce_add_plugin call
 file(GLOB_RECURSE r8brainSourceFiles CONFIGURE_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/modules/r8brain/*.cpp" "${CMAKE_CURRENT_SOURCE_DIR}/modules/r8brain/*.h")
-
 juce_add_binary_data (r8brain SOURCES ${r8brainSourceFiles})
 #add_library(modules/r8brain STATIC)
 #target_sources(modules/r8brain PRIVATE "${r8brain_SOURCE_DIR}/r8bbase.cpp")
@@ -191,6 +190,31 @@ target_compile_definitions(${MELO_VST_RECEIVE}
         PRIVATE
         IN_RECEIVING_MODE=1
 )
+
+MESSAGE(STATUS "CMAKE_CURRENT_SOURCE_DIR: ${CMAKE_CURRENT_SOURCE_DIR}")
+add_custom_command(TARGET ${MELO_VST_RECEIVE} POST_BUILD
+        # Créer le dossier Resources dans le bundle
+        COMMAND ${CMAKE_COMMAND} -E make_directory
+        "MeloVSTReceive_artefacts/Debug/VST3/MeloVSTReceive.vst3/Contents/MacOS"
+        # Copier le fichier certificate dans Resources
+        COMMAND ${CMAKE_COMMAND} -E copy_if_different
+        "${CMAKE_SOURCE_DIR}/assets/ca-certificates.crt"
+        "MeloVSTReceive_artefacts/Debug/VST3/MeloVSTReceive.vst3/Contents/MacOS/ca-certificates.crt"
+        COMMENT "Copie du certificat dans le bundle VST3 (Contents/Resources)"
+)
+
+add_custom_command(TARGET ${MELO_VST_SEND} POST_BUILD
+        # Créer le dossier Resources dans le bundle
+        COMMAND ${CMAKE_COMMAND} -E make_directory
+        "MeloVSTSend_artefacts/Debug/VST3/MeloVSTSend.vst3/Contents/MacOS"
+        # Copier le fichier certificate dans Resources
+        COMMAND ${CMAKE_COMMAND} -E copy_if_different
+        "${CMAKE_SOURCE_DIR}/assets/ca-certificates.crt"
+        "MeloVSTSend_artefacts/Debug/VST3/MeloVSTSend.vst3/Contents/MacOS/ca-certificates.crt"
+        COMMENT "Copie du certificat dans le bundle VST3 (Contents/Resources)"
+)
+
+
 # IPP support, comment out to disable
 include(PamplejuceIPP)
 

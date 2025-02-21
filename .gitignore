@@ -30,4 +30,3 @@ cmake-build-relwithdebinfo
 packaging/Output/*
 *.pem
 *.csr
-*.crt
