@@ -14,3 +14,26 @@
 	path = modules/clap-juce-extensions
 	url = https://github.com/free-audio/clap-juce-extensions.git
 	branch = main
+[submodule "modules/libdatachannel"]
+	path = modules/libdatachannel
+	url = https://github.com/paullouisageneau/libdatachannel.git
+  	branch = main
+[submodule "modules/ssl"]
+	path = modules/ssl
+	url = https://github.com/jimmy-park/openssl-cmake.git
+    branch = main
+[submodule "modules/ixwebsocket"]
+	path = modules/ixwebsocket
+	url = https://github.com/machinezone/IXWebSocket.git
+    branch = master
+[submodule "modules/libopus"]
+    path = modules/libopus
+    url = https://github.com/xiph/opus.git
+    branch = master
+[submodule "modules/r8brain"]
+	path = modules/r8brain
+	url = https://github.com/avaneev/r8brain-free-src.git
+  branch = master
+[submodule "modules/opus"]
+	path = modules/opus
+	url = https://github.com/xiph/opus.git

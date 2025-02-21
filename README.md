@@ -42,6 +42,8 @@ That means the easiest thing to do is click "[Use this template](https://github.
 
 Then check out the [documentation](https://melatonin.dev/manuals/pamplejuce/setting-your-project-up/) so you know what to tweak.
 
+git submodule update --init
+
 ## Having Issues?
 
 Thanks to everyone who has contributed to the repository. 
