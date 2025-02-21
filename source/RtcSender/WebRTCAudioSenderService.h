@@ -34,7 +34,7 @@ private:
 
     void onAudioBlockProcessedEvent(const AudioBlockProcessedEvent &event) override;
 
-    void sendOpusPacket(const std::vector<unsigned char> &opusPacket, int totalFrameSamples);
+    void sendOpusPacket(const std::vector<unsigned char>& opusPacket,uint32_t packetTimestamp,int frameSamples);
 
     void processingThreadFunction();
 
@@ -44,14 +44,12 @@ private:
     uint32_t timestamp = 0;
     uint32_t ssrc = 12345;
 
+    std::deque<AudioBlockProcessedEvent> audioQueue;
+
     std::atomic<bool> threadRunning{true};
     std::thread encodingThread;
-    uint16_t currentNumSamples = 0;
-    uint16_t currentSampleIndex = 0;
-    CircularBuffer<float> circularBuffer;
-    juce::CriticalSection circularBufferLock;
 
-    std::deque<std::vector<float> > audioQueue;
+    std::mutex audioQueueMutex;
     std::priority_queue<
         std::shared_ptr<AudioBlockProcessedEvent>,
         std::vector<std::shared_ptr<AudioBlockProcessedEvent> >,

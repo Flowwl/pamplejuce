@@ -51,3 +51,10 @@ Thanks to everyone who has contributed to the repository.
 This repository covers a _lot_ of ground. JUCE itself has a lot of surface area. It's a group effort to maintain the garden and keep things nice!
 
 If something isn't just working out of the box — *it's probably not just you* — others are running into the problem, too, I promise. Check out [the official docs](https://melatonin.dev/manuals/pamplejuce), then please do [open an issue](https://github.com/sudara/pamplejuce/issues/new)!
+
+
+## SSL
+
+openssl genpkey -algorithm RSA -out certificates/key.pem -pkeyopt rsa_keygen_bits:2048
+openssl req -new -key certificates/key.pem -out certificates/request.csr
+openssl x509 -req -days 365 -in certificates/request.csr -signkey certificates/key.pem -out certificates/cert.crt

@@ -27,10 +27,10 @@ MainPageComponent::MainPageComponent():
     addAndMakeVisible(RTCIceCandidateStateText);
 
     const auto userContext = AuthService::getInstance().getUserContext();
-#ifdef MELO_PLUGIN_NAME
-    appName.setText(juce::String::fromUTF8(MELO_PLUGIN_NAME), juce::dontSendNotification);
+#ifdef IN_RECEIVING_MODE
+    appName.setText(juce::String::fromUTF8("MeloVST Receive"), juce::dontSendNotification);
 #else
-    appName.setText(juce::String::fromUTF8("MeloVST"), juce::dontSendNotification);
+    appName.setText(juce::String::fromUTF8("MeloVST Send"), juce::dontSendNotification);
 #endif
     appName.setJustificationType(juce::Justification::centred);
     appName.setFont(30.0f);

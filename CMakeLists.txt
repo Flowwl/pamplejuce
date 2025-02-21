@@ -63,7 +63,7 @@ juce_add_plugin("${MELO_VST_SEND}"
         BUNDLE_ID "${BUNDLE_ID}"
         COPY_PLUGIN_AFTER_BUILD TRUE
         PLUGIN_MANUFACTURER_CODE Melo
-        PLUGIN_CODE M001
+        PLUGIN_CODE MS01
         FORMATS "${FORMATS}"
         PRODUCT_NAME "${MELO_VST_SEND}"
         COMPANY_WEBSITE "https://studio-melo.com"
@@ -78,7 +78,7 @@ juce_add_plugin("${MELO_VST_RECEIVE}"
         BUNDLE_ID "${BUNDLE_ID}"
         COPY_PLUGIN_AFTER_BUILD TRUE
         PLUGIN_MANUFACTURER_CODE Melo
-        PLUGIN_CODE M001
+        PLUGIN_CODE MR01
         FORMATS "${FORMATS}"
         PRODUCT_NAME "${MELO_VST_RECEIVE}"
         VERSION 0.0.1

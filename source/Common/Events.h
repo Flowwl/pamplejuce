@@ -9,7 +9,7 @@ struct AudioBlockProcessedEvent {
     int numChannels;
     int numSamples;
     double sampleRate;
-    std::chrono::steady_clock::time_point timestamp;
+    uint32_t timestamp;
 };
 
 struct AudioBlockSentEvent {
