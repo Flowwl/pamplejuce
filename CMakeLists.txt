@@ -20,15 +20,12 @@ set(BUILD_SHARED_LIBS OFF)
 # Note: This cannot have spaces (it may be 2024, but you can't have it all!)
 # Worry not, JUCE's PRODUCT_NAME can have spaces (and is what DAWs display)
 set(PROJECT_NAME "MeloVST")
-set(MELO_VST_SEND "MeloVSTSend")
-set(MELO_VST_RECEIVE "MeloVSTReceive")
 set(COMPANY_NAME "Melo Company")
 set(BUNDLE_ID "com.melo.MeloVST")
 set(FORMATS Standalone AU VST3 AUv3)
 set(USE_OPEN_SSL ON)
 set(USE_TLS ON)
-project(${MELO_VST_SEND} VERSION ${CURRENT_VERSION})
-project(${MELO_VST_RECEIVE} VERSION ${CURRENT_VERSION})
+project(${PROJECT_NAME} VERSION ${CURRENT_VERSION})
 
 # JUCE is setup as a submodule in the /JUCE folder
 # Locally, you must run `git submodule update --init --recursive` once
@@ -56,7 +53,7 @@ find_package(OpenSSL REQUIRED)
 target_link_libraries(ixwebsocket PRIVATE OpenSSL::SSL OpenSSL::Crypto)
 
 # See `docs/CMake API.md` in the JUCE repo for all config options
-juce_add_plugin("${MELO_VST_SEND}"
+juce_add_plugin("${PROJECT_NAME}"
         ICON_BIG "${CMAKE_CURRENT_SOURCE_DIR}/packaging/icon.png"
         COMPANY_NAME "${COMPANY_NAME}"
         BUNDLE_ID "${BUNDLE_ID}"
@@ -64,27 +61,10 @@ juce_add_plugin("${MELO_VST_SEND}"
         PLUGIN_MANUFACTURER_CODE Melo
         PLUGIN_CODE MS01
         FORMATS "${FORMATS}"
-        PRODUCT_NAME "${MELO_VST_SEND}"
+        PRODUCT_NAME "${PROJECT_NAME}"
         COMPANY_WEBSITE "https://studio-melo.com"
         COMPANY_EMAIL "contact@studio-melo.com"
         DESCRIPTION "Melo Plugin to send the music to the artist"
-#        HARDENED_RUNTIME_ENABLED TRUE
-)
-
-juce_add_plugin("${MELO_VST_RECEIVE}"
-        ICON_BIG "${CMAKE_CURRENT_SOURCE_DIR}/packaging/icon.png"
-        COMPANY_NAME "${COMPANY_NAME}"
-        BUNDLE_ID "${BUNDLE_ID}"
-        COPY_PLUGIN_AFTER_BUILD TRUE
-        PLUGIN_MANUFACTURER_CODE Melo
-        PLUGIN_CODE MR01
-        FORMATS "${FORMATS}"
-        PRODUCT_NAME "${MELO_VST_RECEIVE}"
-        VERSION 0.0.1
-        BUILD_VERSION 0.0.1
-        COMPANY_WEBSITE "https://studio-melo.com"
-        COMPANY_EMAIL "contact@studio-melo.com"
-        DESCRIPTION "Melo Plugin to receive music from the artist"
 #        HARDENED_RUNTIME_ENABLED TRUE
 )
 
@@ -92,12 +72,7 @@ juce_add_plugin("${MELO_VST_RECEIVE}"
 # Without running into ODR violations
 add_library(SharedCode INTERFACE)
 
-clap_juce_extensions_plugin(TARGET ${MELO_VST_SEND}
-        CLAP_ID "${BUNDLE_ID}"
-        CLAP_FEATURES audio-effect
-)
-
-clap_juce_extensions_plugin(TARGET ${MELO_VST_RECEIVE}
+clap_juce_extensions_plugin(TARGET ${PROJECT_NAME}
         CLAP_ID "${BUNDLE_ID}"
         CLAP_FEATURES audio-effect
 )
@@ -171,6 +146,9 @@ target_link_libraries(SharedCode
         datachannel-static
         r8brain
         ixwebsocket
+        OpenSSL::SSL
+        OpenSSL::Crypto
+        OpenSSL::applink
         Assets
         melatonin_inspector
         juce_audio_devices
@@ -184,34 +162,18 @@ target_link_libraries(SharedCode
         juce::juce_recommended_warning_flags)
 
 # Link the JUCE plugin targets our SharedCode target
-target_link_libraries(${MELO_VST_SEND} PRIVATE SharedCode)
-target_link_libraries(${MELO_VST_RECEIVE} PRIVATE SharedCode)
-
-target_compile_definitions(${MELO_VST_RECEIVE}
-        PRIVATE
-        IN_RECEIVING_MODE=1
-)
+target_link_libraries(${PROJECT_NAME} PRIVATE SharedCode)
 
 MESSAGE(STATUS "CMAKE_CURRENT_SOURCE_DIR: ${CMAKE_CURRENT_SOURCE_DIR}")
-add_custom_command(TARGET ${MELO_VST_RECEIVE} POST_BUILD
-        # Créer le dossier Resources dans le bundle
-        COMMAND ${CMAKE_COMMAND} -E make_directory
-        "MeloVSTReceive_artefacts/Debug/VST3/MeloVSTReceive.vst3/Contents/MacOS"
-        # Copier le fichier certificate dans Resources
-        COMMAND ${CMAKE_COMMAND} -E copy_if_different
-        "${CMAKE_SOURCE_DIR}/assets/ca-certificates.crt"
-        "MeloVSTReceive_artefacts/Debug/VST3/MeloVSTReceive.vst3/Contents/MacOS/ca-certificates.crt"
-        COMMENT "Copie du certificat dans le bundle VST3 (Contents/Resources)"
-)
 
-add_custom_command(TARGET ${MELO_VST_SEND} POST_BUILD
+add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
         # Créer le dossier Resources dans le bundle
         COMMAND ${CMAKE_COMMAND} -E make_directory
-        "MeloVSTSend_artefacts/Debug/VST3/MeloVSTSend.vst3/Contents/MacOS"
+        "${PROJECT_NAME}_artefacts/Debug/VST3/${PROJECT_NAME}.vst3/Contents/MacOS"
         # Copier le fichier certificate dans Resources
         COMMAND ${CMAKE_COMMAND} -E copy_if_different
         "${CMAKE_SOURCE_DIR}/assets/ca-certificates.crt"
-        "MeloVSTSend_artefacts/Debug/VST3/MeloVSTSend.vst3/Contents/MacOS/ca-certificates.crt"
+        "${PROJECT_NAME}_artefacts/Debug/VST3/${PROJECT_NAME}.vst3/Contents/MacOS/ca-certificates.crt"
         COMMENT "Copie du certificat dans le bundle VST3 (Contents/Resources)"
 )
 

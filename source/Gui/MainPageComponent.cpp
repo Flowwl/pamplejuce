@@ -8,11 +8,7 @@
 #include "../Api/ApiService.h"
 
 MainPageComponent::MainPageComponent() :
-#ifdef IN_RECEIVING_MODE
-                                         webRTCAudioService (WebRTCAudioReceiverService()),
-#else
                                          webRTCAudioService (WebRTCAudioSenderService()),
-#endif
                                          outputDevice(),
                                          webSocketService (WebSocketService (getWsRouteString (WsRoute::GetOngoingSession)))
 {
@@ -29,11 +25,7 @@ MainPageComponent::MainPageComponent() :
     addAndMakeVisible (RTCIceCandidateStateText);
 
     const auto userContext = AuthService::getInstance().getUserContext();
-#ifdef IN_RECEIVING_MODE
-    appName.setText (juce::String::fromUTF8 ("MeloVST Receive"), juce::dontSendNotification);
-#else
-    appName.setText (juce::String::fromUTF8 ("MeloVST Send"), juce::dontSendNotification);
-#endif
+    appName.setText (juce::String::fromUTF8 ("MeloVST"), juce::dontSendNotification);
     appName.setJustificationType (juce::Justification::centred);
     appName.setFont (30.0f);
 

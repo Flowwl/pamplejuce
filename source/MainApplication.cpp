@@ -3,11 +3,7 @@
 #include "Config.h"
 
 MainApplication::MainApplication(MainAudioProcessor &p): AudioProcessorEditor(&p) {
-#ifdef IN_RECEIVING_MODE
-    mainWindow = std::make_unique<MainWindow>("MeloVST Receive");
-#else
-    mainWindow = std::make_unique<MainWindow>("MeloVST Send");
-#endif
+    mainWindow = std::make_unique<MainWindow>("MeloVST");
 
     addAndMakeVisible(mainWindow.get());
 

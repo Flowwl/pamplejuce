@@ -9,12 +9,7 @@
 #include "../Models/Session.h"
 #include "../Debug/DebugAudioAppPlayer.h"
 #include "OutputDevice.h"
-
-#ifdef IN_RECEIVING_MODE
-#include "../RtcReceiver/WebRTCAudioReceiverService.h"
-#else
 #include "../RtcSender/WebRTCAudioSenderService.h"
-#endif
 
 class MainPageComponent final : public juce::Component, EventListener
 {
@@ -33,11 +28,7 @@ private:
     juce::Label title, mainText, RTCStateText, RTCIceCandidateStateText, RTCSignalingStateText, appName;
     juce::TextButton logoutButton, connectButton, refreshButton;
     OutputDevice outputDevice;
-#ifdef IN_RECEIVING_MODE
-    WebRTCAudioReceiverService webRTCAudioService;
-#else
     WebRTCAudioSenderService webRTCAudioService;
-#endif
     // DebugAudioAppPlayer audioAppPlayer;
     WebSocketService webSocketService;
     juce::Array<PopulatedSession> ongoingSessions;

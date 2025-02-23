@@ -9,12 +9,10 @@ MainAudioProcessor::MainAudioProcessor()
     : juce::AudioProcessor (BusesProperties()
               .withInput ("Melo Input", juce::AudioChannelSet::stereo(), true)
               .withOutput ("Main Output", juce::AudioChannelSet::stereo(), true)
-              .withOutput ("Aux Output", juce::AudioChannelSet::stereo(), false)
+              .withOutput ("Aux Output", juce::AudioChannelSet::stereo(), true)
           // .withOutput("Melo Output", juce::AudioChannelSet::stereo(), true)
       )
-#ifdef IN_RECEIVING_MODE
 // , audioPacketQueue(AudioSettings::getInstance().getSampleRate() * AudioSettings::getInstance().getNumChannels())
-#endif
 {
     EventManager::getInstance().addListener (this);
 }
@@ -26,11 +24,7 @@ MainAudioProcessor::~MainAudioProcessor()
 
 const juce::String MainAudioProcessor::getProgramName (const int index)
 {
-#ifdef IN_RECEIVING_MODE
-    return "MeloVST (Receiving)";
-#else
-    return "MeloVST (Sending)";
-#endif
+    return "MeloVST";
 }
 
 //==============================================================================
