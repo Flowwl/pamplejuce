@@ -8,6 +8,7 @@
 #include "../Api/WebSocketService.h"
 #include "../Models/Session.h"
 #include "../Debug/DebugAudioAppPlayer.h"
+#include "OutputDevice.h"
 
 #ifdef IN_RECEIVING_MODE
 #include "../RtcReceiver/WebRTCAudioReceiverService.h"
@@ -31,6 +32,7 @@ public:
 private:
     juce::Label title, mainText, RTCStateText, RTCIceCandidateStateText, RTCSignalingStateText, appName;
     juce::TextButton logoutButton, connectButton, refreshButton;
+    OutputDevice outputDevice;
 #ifdef IN_RECEIVING_MODE
     WebRTCAudioReceiverService webRTCAudioService;
 #else

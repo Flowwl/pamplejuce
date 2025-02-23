@@ -5,6 +5,10 @@
 
 #include "Common/CircularBuffer.h"
 #include "Common/EventListener.h"
+#include "Debug/DebugAudioAppPlayer.h"
+#include "Debug/DebugAudioCallback.h"
+#include "juce_audio_devices/juce_audio_devices.h"
+
 #include <deque>
 
 // struct AudioPacket {
@@ -61,6 +65,7 @@ private:
     std::vector<float> currentBlock;
     size_t currentSampleIndex = 0;
     double currentSampleRate = 0;
+
 #endif
 
 };

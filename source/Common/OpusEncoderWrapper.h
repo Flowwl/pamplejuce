@@ -8,11 +8,15 @@
 
 class OpusEncoderWrapper {
 public:
-    OpusEncoderWrapper(const int sample_rate, const int channels, const int duration_ms, const int bitrate): frameDurationInMs(duration_ms), numChannels(channels), sampleRate(sample_rate) {
+    OpusEncoderWrapper(const int sample_rate, const int channels, const int duration_ms, const int bitrate): frameDurationInMs(duration_ms), numChannels(channels), sampleRate(sample_rate)
+    {
         int error;
         encoder = opus_encoder_create(sample_rate, channels, OPUS_APPLICATION_VOIP, &error);
         if (error != OPUS_OK)
+        {
+            juce::Logger::outputDebugString ("Tried to create Opus encoder with sample rate " + std::to_string(sample_rate) + " and channels " + std::to_string(channels));
             throw std::runtime_error("Failed to create Opus encoder: " + std::string(opus_strerror(error)));
+        }
 
         // Configuration de l'encodeur
         opus_encoder_ctl(encoder, OPUS_SET_BITRATE(bitrate));

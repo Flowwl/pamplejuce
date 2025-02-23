@@ -173,6 +173,7 @@ target_link_libraries(SharedCode
         ixwebsocket
         Assets
         melatonin_inspector
+        juce_audio_devices
         juce_audio_utils
         juce_audio_processors
         juce_dsp

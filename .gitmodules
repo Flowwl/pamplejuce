@@ -17,7 +17,7 @@
 [submodule "modules/libdatachannel"]
 	path = modules/libdatachannel
 	url = https://github.com/paullouisageneau/libdatachannel.git
-  	branch = main
+  branch = main
 [submodule "modules/ssl"]
 	path = modules/ssl
 	url = https://github.com/jimmy-park/openssl-cmake.git

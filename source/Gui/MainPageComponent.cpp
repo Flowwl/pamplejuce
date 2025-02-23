@@ -7,71 +7,78 @@
 #include "../Api/SocketRoutes.h"
 #include "../Api/ApiService.h"
 
-MainPageComponent::MainPageComponent():
+MainPageComponent::MainPageComponent() :
 #ifdef IN_RECEIVING_MODE
-    webRTCAudioService(WebRTCAudioReceiverService()),
+                                         webRTCAudioService (WebRTCAudioReceiverService()),
 #else
-    webRTCAudioService(WebRTCAudioSenderService()),
+                                         webRTCAudioService (WebRTCAudioSenderService()),
 #endif
-    webSocketService(WebSocketService(getWsRouteString(WsRoute::GetOngoingSession)))
+                                         outputDevice(),
+                                         webSocketService (WebSocketService (getWsRouteString (WsRoute::GetOngoingSession)))
 {
-    setSize(600, 400);
-    addAndMakeVisible(appName);
-    addAndMakeVisible(title);
-    addAndMakeVisible(logoutButton);
-    addAndMakeVisible(refreshButton);
-    addAndMakeVisible(mainText);
-    addAndMakeVisible(connectButton);
-    addAndMakeVisible(RTCStateText);
-    addAndMakeVisible(RTCSignalingStateText);
-    addAndMakeVisible(RTCIceCandidateStateText);
+    setSize (800, 800);
+    addAndMakeVisible(outputDevice.getAudioSettings());
+    addAndMakeVisible (appName);
+    addAndMakeVisible (title);
+    addAndMakeVisible (logoutButton);
+    addAndMakeVisible (refreshButton);
+    addAndMakeVisible (mainText);
+    addAndMakeVisible (connectButton);
+    addAndMakeVisible (RTCStateText);
+    addAndMakeVisible (RTCSignalingStateText);
+    addAndMakeVisible (RTCIceCandidateStateText);
 
     const auto userContext = AuthService::getInstance().getUserContext();
 #ifdef IN_RECEIVING_MODE
-    appName.setText(juce::String::fromUTF8("MeloVST Receive"), juce::dontSendNotification);
+    appName.setText (juce::String::fromUTF8 ("MeloVST Receive"), juce::dontSendNotification);
 #else
-    appName.setText(juce::String::fromUTF8("MeloVST Send"), juce::dontSendNotification);
+    appName.setText (juce::String::fromUTF8 ("MeloVST Send"), juce::dontSendNotification);
 #endif
-    appName.setJustificationType(juce::Justification::centred);
-    appName.setFont(30.0f);
+    appName.setJustificationType (juce::Justification::centred);
+    appName.setFont (30.0f);
 
-    title.setText(juce::String::fromUTF8(("Bienvenue " + userContext->user.firstname).c_str()),
-                  juce::dontSendNotification);
-    title.setJustificationType(juce::Justification::centred);
-    title.setFont(30.0f);
+    title.setText (juce::String::fromUTF8 (("Bienvenue " + userContext->user.firstname).c_str()),
+        juce::dontSendNotification);
+    title.setJustificationType (juce::Justification::centred);
+    title.setFont (30.0f);
 
-    mainText.setText(juce::String::fromUTF8(("L'audio s'affichera ici")), juce::dontSendNotification);
-    mainText.setJustificationType(juce::Justification::centred);
+    mainText.setText (juce::String::fromUTF8 (("L'audio s'affichera ici")), juce::dontSendNotification);
+    mainText.setJustificationType (juce::Justification::centred);
 
-    RTCStateText.setText(juce::String::fromUTF8(("Vous n'êtes pas connecté avec l'artiste")),
-                         juce::dontSendNotification);
-    RTCStateText.setJustificationType(juce::Justification::centred);
-    RTCIceCandidateStateText.setJustificationType(juce::Justification::centred);
-    RTCSignalingStateText.setJustificationType(juce::Justification::centred);
+    RTCStateText.setText (juce::String::fromUTF8 (("Vous n'êtes pas connecté avec l'artiste")),
+        juce::dontSendNotification);
+    RTCStateText.setJustificationType (juce::Justification::centred);
+    RTCIceCandidateStateText.setJustificationType (juce::Justification::centred);
+    RTCSignalingStateText.setJustificationType (juce::Justification::centred);
 
-    refreshButton.setButtonText(juce::String::fromUTF8("Rafraîchir"));
+    refreshButton.setButtonText (juce::String::fromUTF8 ("Rafraîchir"));
     refreshButton.onClick = [this] {
         fetchOngoingSession();
     };
-    connectButton.setButtonText(juce::String::fromUTF8(("Se connecter avec l'artiste")));
-    connectButton.onClick = [ meloWebRTCServerService = &webRTCAudioService] {
-        if (meloWebRTCServerService->isConnecting()) {
-            juce::Logger::outputDebugString("Already connecting...");
+    connectButton.setButtonText (juce::String::fromUTF8 (("Se connecter avec l'artiste")));
+    connectButton.onClick = [meloWebRTCServerService = &webRTCAudioService] {
+        if (meloWebRTCServerService->isConnecting())
+        {
+            juce::Logger::outputDebugString ("Already connecting...");
             meloWebRTCServerService->disconnect();
-        } else if (meloWebRTCServerService->isConnected()) {
-            juce::Logger::outputDebugString("Disconnecting from artist...");
+        }
+        else if (meloWebRTCServerService->isConnected())
+        {
+            juce::Logger::outputDebugString ("Disconnecting from artist...");
             meloWebRTCServerService->disconnect();
-        } else {
-            juce::Logger::outputDebugString("Connecting from artist...");
+        }
+        else
+        {
+            juce::Logger::outputDebugString ("Connecting from artist...");
             meloWebRTCServerService->setupConnection();
         }
     };
 
-    logoutButton.setButtonText(juce::String::fromUTF8("Se déconnecter"));
+    logoutButton.setButtonText (juce::String::fromUTF8 ("Se déconnecter"));
     logoutButton.onClick = [] { onLogoutButtonClick(); };
 
     fetchOngoingSession();
-    EventManager::getInstance().addListener(this);
+    EventManager::getInstance().addListener (this);
 }
 
 void MainPageComponent::fetchOngoingSession() {
@@ -176,6 +183,8 @@ void MainPageComponent::resized() {
     pageFlexbox.items.add(
         juce::FlexItem(connectButton).withHeight(30).withWidth(200).withAlignSelf(juce::FlexItem::AlignSelf::center).
         withFlex(0).withMargin(juce::FlexItem::Margin(20, 0, 20, 0)));
+
+    pageFlexbox.items.add(juce::FlexItem(*outputDevice.getAudioSettings()).withFlex(1));
     pageFlexbox.performLayout(getLocalBounds());
 }
 
