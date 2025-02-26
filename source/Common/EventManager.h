@@ -99,5 +99,4 @@ private:
     ~EventManager() = default; // Destructeur privé
     EventManager(const EventManager&) = delete; // Supprime la copie
     EventManager& operator=(const EventManager&) = delete; // Supprime l'assignation
-
 };

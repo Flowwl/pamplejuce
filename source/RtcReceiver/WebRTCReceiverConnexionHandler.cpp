@@ -14,7 +14,6 @@ WebRTCReceiverConnexionHandler::~WebRTCReceiverConnexionHandler() {
 }
 
 void WebRTCReceiverConnexionHandler::setupConnection() {
-    rtc::InitLogger(rtc::LogLevel::Info);
     rtc::Configuration config;
     config.iceServers.emplace_back("stun:stun.l.google.com:19302");
 

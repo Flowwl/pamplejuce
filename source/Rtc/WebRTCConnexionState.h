@@ -45,6 +45,8 @@ protected:
 private:
     WebSocketService meloWebSocketService;
     std::optional<PopulatedSession> ongoingSession;
+
+    JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (WebRTCConnexionState);
 };
 
 

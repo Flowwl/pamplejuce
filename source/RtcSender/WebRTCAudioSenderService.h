@@ -56,4 +56,7 @@ private:
         CompareAudioEvent
     > audioEventQueue;
     juce::CriticalSection dequeLock;
+
+    JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (WebRTCAudioSenderService)
+
 };

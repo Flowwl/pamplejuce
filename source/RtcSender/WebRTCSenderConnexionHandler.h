@@ -30,4 +30,6 @@ private:
     int resendAttempts = 0;
     int resendIntervalMs = 10000;
     std::optional<ReconnectTimer> answerTimer;
+
+    JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (WebRTCSenderConnexionHandler)
 };

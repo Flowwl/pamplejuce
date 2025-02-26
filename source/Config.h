@@ -4,10 +4,10 @@
 namespace Config
 {
     // URL de l'API
-    // static const juce::String apiUrl = "http://localhost:5055/api";
-    // static const juce::String websocketUrl = "ws://localhost:5055";
-    static const juce::String apiUrl = "https://staging.studio-melo.com/api";
-    static const juce::String websocketUrl = "wss://staging.studio-melo.com";
+    static const juce::String apiUrl = "http://localhost:5055/api";
+    static const juce::String websocketUrl = "ws://localhost:5055";
+    // static const juce::String apiUrl = "https://staging.studio-melo.com/api";
+    // static const juce::String websocketUrl = "wss://staging.studio-melo.com";
 
     // Couleurs
     static const auto primaryColor = juce::Colour(0xFF1A1A1A);

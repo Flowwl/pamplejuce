@@ -82,4 +82,5 @@ private:
     int opusSampleRate = 48000;
     int latency = 20;
     int opusBitRate = 64000;
+
 };

@@ -15,4 +15,6 @@ protected:
 private:
     void handleOffer(const std::string& sdp);
     void onWsMessageReceived(const MessageWsReceivedEvent &event) override;
+
+    JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (WebRTCReceiverConnexionHandler)
 };

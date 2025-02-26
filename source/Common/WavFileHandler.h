@@ -122,4 +122,6 @@ private:
         file->seekp(40, std::ios::beg);
         file->write(reinterpret_cast<const char*>(&dataSize), 4);
     }
+
+    JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (WavFileHandler);
 };

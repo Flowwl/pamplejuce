@@ -24,4 +24,6 @@ private:
     // Buffer pour stocker les paquets audio triés par timestamp
     std::map<uint64_t, rtc::binary> audioBuffer;
     std::mutex bufferMutex;
+
+    JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (WebRTCAudioReceiverService)
 };

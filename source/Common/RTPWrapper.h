@@ -87,4 +87,6 @@ public:
         // Retourner uniquement le payload (sans l'en-tête RTP)
         return std::vector<unsigned char>(rtpPacket.begin() + headerSize, rtpPacket.end());
     }
+
+    JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (RTPWrapper);
 };

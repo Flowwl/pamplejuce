@@ -32,4 +32,7 @@ public:
         // Appeler le gestionnaire par défaut après votre rapport
         std::abort();
     }
+
+    JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (CrashHandler)
+
 };

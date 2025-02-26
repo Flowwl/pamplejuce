@@ -173,9 +173,11 @@ void MainPageComponent::resized() {
 
     pageFlexbox.items.add(juce::FlexItem(titleFlexbox).withFlex(1));
     pageFlexbox.items.add(juce::FlexItem(stateFlexbox).withFlex(1));
+    #ifndef IN_RECEIVING_MODE
     pageFlexbox.items.add(
         juce::FlexItem(connectButton).withHeight(30).withWidth(200).withAlignSelf(juce::FlexItem::AlignSelf::center).
         withFlex(0).withMargin(juce::FlexItem::Margin(20, 0, 20, 0)));
+    #endif
     pageFlexbox.performLayout(getLocalBounds());
 }
 

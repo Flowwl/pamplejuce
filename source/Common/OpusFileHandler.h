@@ -70,4 +70,6 @@ private:
     uint16_t numChannels;
     std::ofstream* file;
     OpusEncoder* encoder;
+
+    JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (OpusFileHandler)
 };

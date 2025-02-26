@@ -80,4 +80,6 @@ private:
     int readIndex;
     int writeIndex;
     int availableSamples;
+
+    JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (CircularBuffer)
 };

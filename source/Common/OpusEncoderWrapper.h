@@ -54,4 +54,7 @@ private:
     int frameDurationInMs;
     int numChannels;
     int sampleRate;
+
+    JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (OpusEncoderWrapper)
+
 };

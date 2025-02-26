@@ -8,7 +8,14 @@ WebRTCSenderConnexionHandler::WebRTCSenderConnexionHandler(const WsRoute wsRoute
 }
 
 void WebRTCSenderConnexionHandler::setupConnection() {
-    rtc::InitLogger(rtc::LogLevel::Info);
+    try
+    {
+        rtc::InitLogger(rtc::LogLevel::Info);
+    }
+    catch (const std::exception &e)
+    {
+        juce::Logger::outputDebugString("Error initializing logger: " + std::string(e.what()));
+    }
     rtc::Configuration config;
     config.iceServers.emplace_back("stun:stun.l.google.com:19302");
 
