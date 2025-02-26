@@ -68,9 +68,9 @@ void WebRTCAudioSenderService::processingThreadFunction()
                                          accumulationBuffer.begin() + totalFrameSamples);
             // Notifier l'envoi (optionnel)
             // EventManager::getInstance().notifyOnAudioBlockSent(AudioBlockSentEvent{ frameData, packetTimestamp });
-
+            auto resampledData = resampler.resampleFromFloat(frameData);
             // Encoder la trame en packet Opus
-            std::vector<unsigned char> opusPacket = opusEncoder.encode_float(frameData, frameSamples);
+            std::vector<unsigned char> opusPacket = opusEncoder.encode_float(resampledData, resampledData.size());
             if (!opusPacket.empty() && audioTrack)
             {
                 sendOpusPacket(opusPacket, timestamp, frameSamples);

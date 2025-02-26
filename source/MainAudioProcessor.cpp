@@ -7,12 +7,8 @@
 //==============================================================================
 MainAudioProcessor::MainAudioProcessor()
     : juce::AudioProcessor(BusesProperties()
-#if ! JucePlugin_IsMidiEffect
-#if ! JucePlugin_IsSynth
         .withInput("Input", juce::AudioChannelSet::stereo(), true)
-#endif
         .withOutput("Output", juce::AudioChannelSet::stereo(), true)
-#endif
     )
 #ifdef IN_RECEIVING_MODE
 // , audioPacketQueue(AudioSettings::getInstance().getSampleRate() * AudioSettings::getInstance().getNumChannels())
@@ -26,11 +22,7 @@ MainAudioProcessor::~MainAudioProcessor() {
 };
 
 const juce::String MainAudioProcessor::getProgramName(const int index) {
-#ifdef MELO_PLUGIN_NAME
-    return MELO_PLUGIN_NAME;
-#else
     return "MeloVST";
-#endif
 }
 
 
@@ -110,26 +102,7 @@ void MainAudioProcessor::releaseResources() {
 }
 
 bool MainAudioProcessor::isBusesLayoutSupported(const BusesLayout &layouts) const {
-#if JucePlugin_IsMidiEffect
-    juce::ignoreUnused (layouts);
     return true;
-#else
-    // This is the place where you check if the layout is supported.
-    // In this template code we only support mono or stereo.
-    // Some plugin hosts, such as certain GarageBand versions, will only
-    // load plugins that support stereo bus layouts.
-    if (layouts.getMainOutputChannelSet() != juce::AudioChannelSet::mono()
-        && layouts.getMainOutputChannelSet() != juce::AudioChannelSet::stereo())
-        return false;
-
-    // This checks if the input layout matches the output layout
-#if ! JucePlugin_IsSynth
-    if (layouts.getMainOutputChannelSet() != layouts.getMainInputChannelSet())
-        return false;
-#endif
-
-    return true;
-#endif
 }
 
 #ifdef IN_RECEIVING_MODE
@@ -160,6 +133,8 @@ void MainAudioProcessor::processBlock(juce::AudioBuffer<float> &buffer,
 
         int samplesRemainingInBlock = static_cast<int>(currentBlock.size()) - currentSampleIndex;
         int samplesToCopy = std::min(numSamples - samplesWritten, samplesRemainingInBlock);
+        juce::Logger::outputDebugString("Samples to copy: " + std::to_string(samplesToCopy));
+        juce::Logger::outputDebugString("nb channels: " + std::to_string(numChannels));
         for (int channel = 0; channel < numChannels; ++channel) {
             auto writePointer = buffer.getWritePointer(channel, samplesWritten);
             for (int sample = 0; sample < samplesToCopy; ++sample) {
