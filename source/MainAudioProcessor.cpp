@@ -2,6 +2,7 @@
 #include "MainApplication.h"
 #include "AudioSettings.h"
 #include "Common/EventManager.h"
+#include <chrono>
 
 //==============================================================================
 MainAudioProcessor::MainAudioProcessor()
@@ -211,11 +212,13 @@ void MainAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer,
     if (pcmData.empty()) return; // Vérification plus explicite
 
     // Envoyer l'événement avec std::move pour éviter les copies inutiles
+    uint32_t timestamp = std::chrono::steady_clock::now().time_since_epoch().count();
     EventManager::getInstance().notifyAudioBlockProcessed(AudioBlockProcessedEvent{
         std::move(pcmData), // Transfert des données
         numChannels,
         numSamples,
-        getSampleRate()
+        getSampleRate(),
+        timestamp
     });
 }
 #endif

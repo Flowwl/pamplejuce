@@ -20,15 +20,13 @@ set(BUILD_SHARED_LIBS OFF)
 # Note: This cannot have spaces (it may be 2024, but you can't have it all!)
 # Worry not, JUCE's PRODUCT_NAME can have spaces (and is what DAWs display)
 set(PROJECT_NAME "MeloVST")
-set(MELO_VST_SEND "MeloVSTSend")
-set(MELO_VST_RECEIVE "MeloVSTReceive")
+set(PRODUCT_NAME "Melo VST")
+set(USE_OPEN_SSL ON)
+set(USE_TLS ON)
 set(COMPANY_NAME "Melo Company")
 set(BUNDLE_ID "com.melo.MeloVST")
 set(FORMATS Standalone AU VST3 AUv3)
-set(USE_OPEN_SSL ON)
-set(USE_TLS ON)
-project(${MELO_VST_SEND} VERSION ${CURRENT_VERSION})
-project(${MELO_VST_RECEIVE} VERSION ${CURRENT_VERSION})
+project(${PROJECT_NAME} VERSION ${CURRENT_VERSION})
 
 # JUCE is setup as a submodule in the /JUCE folder
 # Locally, you must run `git submodule update --init --recursive` once
@@ -42,7 +40,7 @@ add_subdirectory(modules/clap-juce-extensions EXCLUDE_FROM_ALL)
 # Add any other modules you want modules here, before the juce_add_plugin call
 file(GLOB_RECURSE r8brainSourceFiles CONFIGURE_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/modules/r8brain/*.cpp" "${CMAKE_CURRENT_SOURCE_DIR}/modules/r8brain/*.h")
 
-juce_add_binary_data (r8brain SOURCES ${r8brainSourceFiles})
+juce_add_binary_data(r8brain SOURCES ${r8brainSourceFiles})
 #add_library(modules/r8brain STATIC)
 #target_sources(modules/r8brain PRIVATE "${r8brain_SOURCE_DIR}/r8bbase.cpp")
 
@@ -57,7 +55,7 @@ find_package(OpenSSL REQUIRED)
 target_link_libraries(ixwebsocket PRIVATE OpenSSL::SSL OpenSSL::Crypto)
 
 # See `docs/CMake API.md` in the JUCE repo for all config options
-juce_add_plugin("${MELO_VST_SEND}"
+juce_add_plugin("${PROJECT_NAME}"
         ICON_BIG "${CMAKE_CURRENT_SOURCE_DIR}/packaging/icon.png"
         COMPANY_NAME "${COMPANY_NAME}"
         BUNDLE_ID "${BUNDLE_ID}"
@@ -65,43 +63,20 @@ juce_add_plugin("${MELO_VST_SEND}"
         PLUGIN_MANUFACTURER_CODE Melo
         PLUGIN_CODE M001
         FORMATS "${FORMATS}"
-        PRODUCT_NAME "${MELO_VST_SEND}"
+        PRODUCT_NAME "${PRODUCT_NAME}"
         COMPANY_WEBSITE "https://studio-melo.com"
         COMPANY_EMAIL "contact@studio-melo.com"
         DESCRIPTION "Melo Plugin to send the music to the artist"
-#        HARDENED_RUNTIME_ENABLED TRUE
-)
-
-juce_add_plugin("${MELO_VST_RECEIVE}"
-        ICON_BIG "${CMAKE_CURRENT_SOURCE_DIR}/packaging/icon.png"
-        COMPANY_NAME "${COMPANY_NAME}"
-        BUNDLE_ID "${BUNDLE_ID}"
-        COPY_PLUGIN_AFTER_BUILD TRUE
-        PLUGIN_MANUFACTURER_CODE Melo
-        PLUGIN_CODE M001
-        FORMATS "${FORMATS}"
-        PRODUCT_NAME "${MELO_VST_RECEIVE}"
-        VERSION 0.0.1
-        BUILD_VERSION 0.0.1
-        COMPANY_WEBSITE "https://studio-melo.com"
-        COMPANY_EMAIL "contact@studio-melo.com"
-        DESCRIPTION "Melo Plugin to receive music from the artist"
-#        HARDENED_RUNTIME_ENABLED TRUE
+        #        HARDENED_RUNTIME_ENABLED TRUE
 )
 
 # This lets us use our code in both the JUCE targets and our Test target
 # Without running into ODR violations
 add_library(SharedCode INTERFACE)
 
-clap_juce_extensions_plugin(TARGET ${MELO_VST_SEND}
+clap_juce_extensions_plugin(TARGET "${PROJECT_NAME}"
         CLAP_ID "${BUNDLE_ID}"
-        CLAP_FEATURES audio-effect
-)
-
-clap_juce_extensions_plugin(TARGET ${MELO_VST_RECEIVE}
-        CLAP_ID "${BUNDLE_ID}"
-        CLAP_FEATURES audio-effect
-)
+        CLAP_FEATURES audio-effect)
 
 include(SharedCodeDefaults)
 
@@ -140,6 +115,54 @@ target_compile_definitions(SharedCode
         PRODUCT_NAME_WITHOUT_VERSION="MeloVST"
 )
 
+# Link to any other modules you added (with juce_add_module) here!
+# Usually JUCE modules must have PRIVATE visibility
+# See https://github.com/juce-framework/JUCE/blob/master/docs/CMake%20API.md#juce_add_module
+# However, with Pamplejuce, you'll link modules to SharedCode with INTERFACE visibility
+# This allows the JUCE plugin targets and the Tests target to link against it
+target_link_libraries(SharedCode
+        INTERFACE
+        opus
+        datachannel
+        datachannel-static
+        #    r8brain
+        ixwebsocket
+        Assets
+        melatonin_inspector
+        juce_audio_utils
+        juce_audio_processors
+        juce_dsp
+        juce_gui_basics
+        juce_gui_extra
+        juce::juce_recommended_config_flags
+        juce::juce_recommended_lto_flags
+        juce::juce_recommended_warning_flags)
+
+# Link the JUCE plugin targets our SharedCode target
+target_link_libraries("${PROJECT_NAME}" PRIVATE SharedCode)
+
+MESSAGE(STATUS "CMAKE_CURRENT_SOURCE_DIR: ${CMAKE_CURRENT_SOURCE_DIR}")
+add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
+        # Créer le dossier Resources dans le bundle
+        COMMAND ${CMAKE_COMMAND} -E make_directory
+        "MeloVST_artefacts/Debug/VST3/MeloVST.vst3/Contents/MacOS"
+        # Copier le fichier certificate dans Resources
+        COMMAND ${CMAKE_COMMAND} -E copy_if_different
+        "${CMAKE_SOURCE_DIR}/assets/ca-certificates.crt"
+        "MeloVST_artefacts/Debug/VST3/MeloVST.vst3/Contents/MacOS/ca-certificates.crt"
+        COMMENT "Copie du certificat dans le bundle VST3 (Contents/Resources)"
+)
+
+# IPP support, comment out to disable
+include(PamplejuceIPP)
+# Everything related to the tests target
+include(Tests)
+# A separate target for Benchmarks (keeps the Tests target fast)
+include(Benchmarks)
+# Output some config for CI (like our PRODUCT_NAME)
+include(GitHubENV)
+
+
 get_target_property(IXWEB_INCLUDE ixwebsocket INTERFACE_INCLUDE_DIRECTORIES)
 message(STATUS "IXWEB_INCLUDE: ${IXWEB_INCLUDE}")
 if (IXWEB_INCLUDE)
@@ -159,46 +182,3 @@ if (IXWEB_INCLUDE)
     message(STATUS "new_includes: ${new_includes}")
     set_target_properties(ixwebsocket PROPERTIES INTERFACE_INCLUDE_DIRECTORIES "${new_includes}")
 endif()
-
-# Link to any other modules you added (with juce_add_module) here!
-# Usually JUCE modules must have PRIVATE visibility
-# See https://github.com/juce-framework/JUCE/blob/master/docs/CMake%20API.md#juce_add_module
-# However, with Pamplejuce, you'll link modules to SharedCode with INTERFACE visibility
-# This allows the JUCE plugin targets and the Tests target to link against it
-target_link_libraries(SharedCode
-        INTERFACE
-        opus
-        datachannel
-        datachannel-static
-        r8brain
-        ixwebsocket
-        Assets
-        melatonin_inspector
-        juce_audio_utils
-        juce_audio_processors
-        juce_dsp
-        juce_gui_basics
-        juce_gui_extra
-        juce::juce_recommended_config_flags
-        juce::juce_recommended_lto_flags
-        juce::juce_recommended_warning_flags)
-
-# Link the JUCE plugin targets our SharedCode target
-target_link_libraries(${MELO_VST_SEND} PRIVATE SharedCode)
-target_link_libraries(${MELO_VST_RECEIVE} PRIVATE SharedCode)
-
-target_compile_definitions(${MELO_VST_RECEIVE}
-        PRIVATE
-        IN_RECEIVING_MODE=1
-)
-# IPP support, comment out to disable
-include(PamplejuceIPP)
-
-# Everything related to the tests target
-include(Tests)
-
-# A separate target for Benchmarks (keeps the Tests target fast)
-include(Benchmarks)
-
-# Output some config for CI (like our PRODUCT_NAME)
-include(GitHubENV)

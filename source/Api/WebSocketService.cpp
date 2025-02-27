@@ -9,7 +9,11 @@ WebSocketService::WebSocketService(const juce::String &wsRoute): wsRoute(wsRoute
     if (const auto accessToken = JuceLocalStorage::getInstance().loadValue("access_token"); accessToken.isNotEmpty()) {
         webSocket.setExtraHeaders({{"Authorization", "Bearer " + accessToken.toStdString()}});
     }
-
+    juce::File certDir = juce::File::getSpecialLocation(juce::File::currentExecutableFile).getParentDirectory();
+    ix::SocketTLSOptions tlsOptions;
+    tlsOptions.caFile   = certDir.getChildFile("ca-certificates.crt").getFullPathName().toStdString();
+    tlsOptions.disable_hostname_validation = true;
+    webSocket.setTLSOptions(tlsOptions);
     webSocket.setOnMessageCallback([this](const ix::WebSocketMessagePtr &msg) {
         switch (msg->type) {
             case ix::WebSocketMessageType::Message:
