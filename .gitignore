@@ -22,7 +22,10 @@ Testing
 
 # IDE config
 .idea
-
+modules
+modules/**/*.cmake
+modules/**/*.make
+modules/**/*
 # clion cmake builds
 cmake-build-debug
 cmake-build-release

@@ -6,19 +6,14 @@ include(PamplejuceVersion)
 
 # Modern concise way to add dependencies to your project
 include(CPM)
-
 # Configures universal binaries and decides which version of macOS to support
 include(PamplejuceMacOS)
-
 # Couple tweaks that IMO should be JUCE defaults
 include(JUCEDefaults)
 
 # Remove BUILD_SHARED_LIBS for libdatachannel
 set(BUILD_SHARED_LIBS OFF)
-# Change me!
-# This is the internal name of the project and the name of JUCE's shared code target
-# Note: This cannot have spaces (it may be 2024, but you can't have it all!)
-# Worry not, JUCE's PRODUCT_NAME can have spaces (and is what DAWs display)
+set(USE_SYSTEM_SRTP ON)
 set(PROJECT_NAME "MeloVST")
 set(MELO_VST_SEND "MeloVSTSend")
 set(MELO_VST_RECEIVE "MeloVSTReceive")
@@ -27,8 +22,17 @@ set(BUNDLE_ID "com.melo.MeloVST")
 set(FORMATS Standalone AU VST3 AUv3)
 set(USE_OPEN_SSL ON)
 set(USE_TLS ON)
+set(CMAKE_XCODE_ATTRIBUTE_CODE_SIGN_STYLE "Manual")
+set(CMAKE_XCODE_ATTRIBUTE_CODE_SIGN_IDENTITY "Developer ID Application: Silver Roves Studio (9W2L5R73RN)")
+set(CMAKE_XCODE_ATTRIBUTE_DEVELOPMENT_TEAM "9W2L5R73RN")
+set_property(GLOBAL PROPERTY USE_FOLDERS ON)
+
 project(${MELO_VST_SEND} VERSION ${CURRENT_VERSION})
 project(${MELO_VST_RECEIVE} VERSION ${CURRENT_VERSION})
+
+# Ajoute les chemins d'OpenSSL installés via Homebrew
+
+# Ajoute OpenSSL aux cibles
 
 # JUCE is setup as a submodule in the /JUCE folder
 # Locally, you must run `git submodule update --init --recursive` once
@@ -39,11 +43,10 @@ add_subdirectory(JUCE)
 # Add CLAP format
 add_subdirectory(modules/clap-juce-extensions EXCLUDE_FROM_ALL)
 
-# Add any other modules you want modules here, before the juce_add_plugin call
-file(GLOB_RECURSE r8brainSourceFiles CONFIGURE_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/modules/r8brain/*.cpp" "${CMAKE_CURRENT_SOURCE_DIR}/modules/r8brain/*.h")
-juce_add_binary_data (r8brain SOURCES ${r8brainSourceFiles})
-#add_library(modules/r8brain STATIC)
-#target_sources(modules/r8brain PRIVATE "${r8brain_SOURCE_DIR}/r8bbase.cpp")
+#juce_add_binary_data(r8brain SOURCES modules/r8brain/r8bbase.cpp)
+include_directories(modules/r8brain)
+add_library(r8brain STATIC)
+target_sources(r8brain PRIVATE modules/r8brain/r8bbase.cpp)
 
 # This adds the melatonin inspector module
 add_subdirectory(modules/ssl)
@@ -53,8 +56,10 @@ add_subdirectory(modules/opus)
 add_subdirectory(modules/melatonin_inspector)
 
 find_package(OpenSSL REQUIRED)
-target_link_libraries(ixwebsocket PRIVATE OpenSSL::SSL OpenSSL::Crypto)
-
+MESSAGE(STATUS "OPENSSL_INCLUDE_DIR: ${OPENSSL_INCLUDE_DIR}")
+MESSAGE(STATUS "OPENSSL_LIBRARIES: ${OPENSSL_LIBRARIES}")
+include_directories(${OPENSSL_INCLUDE_DIR})
+link_directories(${OPENSSL_LIBRARIES})
 # See `docs/CMake API.md` in the JUCE repo for all config options
 juce_add_plugin("${MELO_VST_SEND}"
         ICON_BIG "${CMAKE_CURRENT_SOURCE_DIR}/packaging/icon.png"
@@ -138,27 +143,6 @@ target_compile_definitions(SharedCode
         # JucePlugin_Name is for some reason doesn't use the nicer PRODUCT_NAME
         PRODUCT_NAME_WITHOUT_VERSION="MeloVST"
 )
-
-get_target_property(IXWEB_INCLUDE ixwebsocket INTERFACE_INCLUDE_DIRECTORIES)
-message(STATUS "IXWEB_INCLUDE: ${IXWEB_INCLUDE}")
-if (IXWEB_INCLUDE)
-    # Sépare la chaîne en une liste d'arguments
-    separate_arguments(IXWEB_INCLUDE_LIST UNIX_COMMAND "${IXWEB_INCLUDE}")
-    set(new_includes "")
-    foreach(item IN LISTS IXWEB_INCLUDE_LIST)
-        message(STATUS "item: ${item}")
-        # Vérifie si item contient le chemin à supprimer
-        string(FIND "${item}" "modules/ixwebsocket" pos)
-        if (pos EQUAL -1)
-            list(APPEND new_includes "${item}")
-        else()
-            message(STATUS "Removing: ${item}")
-        endif()
-    endforeach()
-    message(STATUS "new_includes: ${new_includes}")
-    set_target_properties(ixwebsocket PROPERTIES INTERFACE_INCLUDE_DIRECTORIES "${new_includes}")
-endif()
-
 # Link to any other modules you added (with juce_add_module) here!
 # Usually JUCE modules must have PRIVATE visibility
 # See https://github.com/juce-framework/JUCE/blob/master/docs/CMake%20API.md#juce_add_module
@@ -166,6 +150,8 @@ endif()
 # This allows the JUCE plugin targets and the Tests target to link against it
 target_link_libraries(SharedCode
         INTERFACE
+        OpenSSL::SSL
+        OpenSSL::Crypto
         opus
         datachannel
         datachannel-static
@@ -180,15 +166,21 @@ target_link_libraries(SharedCode
         juce_gui_extra
         juce::juce_recommended_config_flags
         juce::juce_recommended_lto_flags
-        juce::juce_recommended_warning_flags)
+        juce::juce_recommended_warning_flags
+)
 
-# Link the JUCE plugin targets our SharedCode target
 target_link_libraries(${MELO_VST_SEND} PRIVATE SharedCode)
 target_link_libraries(${MELO_VST_RECEIVE} PRIVATE SharedCode)
-
-target_compile_definitions(${MELO_VST_RECEIVE}
-        PRIVATE
-        IN_RECEIVING_MODE=1
+target_compile_definitions(${MELO_VST_RECEIVE} PRIVATE IN_RECEIVING_MODE=1)
+set_target_properties(${MELO_VST_SEND} PROPERTIES
+        XCODE_ATTRIBUTE_CODE_SIGN_STYLE "${CMAKE_XCODE_ATTRIBUTE_CODE_SIGN_STYLE}"
+        XCODE_ATTRIBUTE_CODE_SIGN_IDENTITY "${CMAKE_XCODE_ATTRIBUTE_CODE_SIGN_IDENTITY}"
+        XCODE_ATTRIBUTE_DEVELOPMENT_TEAM "${CMAKE_XCODE_ATTRIBUTE_DEVELOPMENT_TEAM}"
+)
+set_target_properties(${MELO_VST_RECEIVE} PROPERTIES
+        XCODE_ATTRIBUTE_CODE_SIGN_STYLE "${CMAKE_XCODE_ATTRIBUTE_CODE_SIGN_STYLE}"
+        XCODE_ATTRIBUTE_CODE_SIGN_IDENTITY "${CMAKE_XCODE_ATTRIBUTE_CODE_SIGN_IDENTITY}"
+        XCODE_ATTRIBUTE_DEVELOPMENT_TEAM "${CMAKE_XCODE_ATTRIBUTE_DEVELOPMENT_TEAM}"
 )
 
 MESSAGE(STATUS "CMAKE_CURRENT_SOURCE_DIR: ${CMAKE_CURRENT_SOURCE_DIR}")
@@ -226,3 +218,25 @@ include(Benchmarks)
 
 # Output some config for CI (like our PRODUCT_NAME)
 include(GitHubENV)
+
+get_target_property(IXWEB_INCLUDE ixwebsocket INTERFACE_INCLUDE_DIRECTORIES)
+message(STATUS "IXWEB_INCLUDE: ${IXWEB_INCLUDE}")
+if (IXWEB_INCLUDE)
+    # Sépare la chaîne en une liste d'arguments
+    separate_arguments(IXWEB_INCLUDE_LIST UNIX_COMMAND "${IXWEB_INCLUDE}")
+    set(new_includes "")
+    foreach(item IN LISTS IXWEB_INCLUDE_LIST)
+        message(STATUS "item: ${item}")
+        # Vérifie si item contient le chemin à supprimer
+        string(FIND "${item}" "modules/ixwebsocket" pos)
+        if (pos EQUAL -1)
+            list(APPEND new_includes "${item}")
+        else()
+            message(STATUS "Removing: ${item}")
+        endif()
+    endforeach()
+    message(STATUS "new_includes: ${new_includes}")
+    set_target_properties(ixwebsocket PROPERTIES INTERFACE_INCLUDE_DIRECTORIES "${new_includes}")
+endif()
+
+target_link_libraries(ixwebsocket PRIVATE OpenSSL::SSL OpenSSL::Crypto)
