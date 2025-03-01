@@ -38,7 +38,7 @@ public:
 
         const int ret = opus_encode_float(encoder, pcm.data(), nbSamples, res.data(), static_cast<int>(res.size()));
         if (ret < 0) {
-            return res;
+            return {};
         }
 
         res.resize(ret);

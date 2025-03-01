@@ -31,68 +31,65 @@ void WebRTCAudioSenderService::onAudioBlockProcessedEvent (const AudioBlockProce
     {
         std::lock_guard<std::mutex> lock (audioQueueMutex);
         audioEventQueue.push (std::make_shared<AudioBlockProcessedEvent> (event));
+        startAudioThread();
     }
 }
 
 void WebRTCAudioSenderService::processingThreadFunction()
 {
-    // Calcul du nombre d'échantillons par canal pour une trame de 20ms
-    const int frameSamples = static_cast<int>(
-        AudioSettings::getInstance().getSampleRate() * 10 / 1000.0); // 48000 * 20/1000 = 960
-    const int totalFrameSamples = frameSamples * AudioSettings::getInstance().getNumChannels(); // ex: 960 * 2 = 1920
+    // 48000 * 20/1000 = 960
+    const int dawFrameSamplesPerChannel = static_cast<int>(AudioSettings::getInstance().getSampleRate() * AudioSettings::getInstance().getLatency() / 1000.0);
+    // 960 * 2 = 1920
+    const int dawFrameSamplesWithAllChannels = dawFrameSamplesPerChannel * AudioSettings::getInstance().getNumChannels();
 
-    // Buffer temporaire pour accumuler les samples (interleaved)
     std::vector<float> accumulationBuffer;
-    accumulationBuffer.reserve(totalFrameSamples * 2); // pré-allocation (optionnelle)
+    accumulationBuffer.reserve(dawFrameSamplesWithAllChannels * 2);
 
     while (threadRunning)
     {
-        // Récupérer les événements audio dans l'ordre
         {
             const juce::ScopedLock sl(dequeLock);
             while (!audioEventQueue.empty())
             {
                 auto eventPtr = audioEventQueue.top();
                 audioEventQueue.pop();
-
-                // On ajoute les samples du bloc dans le buffer d'accumulation
+                accumulationBuffer.reserve(accumulationBuffer.size() + eventPtr->data.size());
                 accumulationBuffer.insert(accumulationBuffer.end(), eventPtr->data.begin(), eventPtr->data.end());
             }
         }
 
-        // Tant que nous avons suffisamment de samples pour constituer une trame
-        while (accumulationBuffer.size() >= static_cast<size_t>(totalFrameSamples))
+        while (accumulationBuffer.size() >= static_cast<size_t>(dawFrameSamplesWithAllChannels))
         {
-            // Extraire exactement totalFrameSamples depuis le début
-            std::vector<float> frameData(accumulationBuffer.begin(),
-                                         accumulationBuffer.begin() + totalFrameSamples);
-            // Notifier l'envoi (optionnel)
+            std::vector<float> frameData(accumulationBuffer.begin(), accumulationBuffer.begin() + dawFrameSamplesWithAllChannels);
+
             // EventManager::getInstance().notifyOnAudioBlockSent(AudioBlockSentEvent{ frameData, packetTimestamp });
             auto resampledData = resampler.resampleFromFloat(frameData);
-            // Encoder la trame en packet Opus
-            std::vector<unsigned char> opusPacket = opusEncoder.encode_float(resampledData, resampledData.size());
+            auto resampledFrameSamplesPerChannel = resampledData.size() / AudioSettings::getInstance().getNumChannels();
+            std::vector<unsigned char> opusPacket = opusEncoder.encode_float(resampledData, resampledFrameSamplesPerChannel);
+            timestamp += resampledFrameSamplesPerChannel;
+            resampledData.clear();
             if (!opusPacket.empty() && audioTrack)
             {
-                sendOpusPacket(opusPacket, timestamp, frameSamples);
+                sendOpusPacket(opusPacket);
             }
-
-            // Supprimer les samples traités du buffer d'accumulation
-            accumulationBuffer.erase(accumulationBuffer.begin(),
-                                     accumulationBuffer.begin() + totalFrameSamples);
+            opusPacket.clear();
+            if (accumulationBuffer.size() >= static_cast<size_t>(dawFrameSamplesWithAllChannels)) {
+                accumulationBuffer.erase(accumulationBuffer.begin(), accumulationBuffer.begin() + dawFrameSamplesWithAllChannels);
+            }
         }
-        // Attente si pas assez de données accumulées
-        std::this_thread::sleep_for(std::chrono::milliseconds(5));
+
+        std::this_thread::sleep_for(std::chrono::milliseconds(2));
     }
 }
 
-void WebRTCAudioSenderService::sendOpusPacket (const std::vector<unsigned char>& opusPacket, uint32_t packetTimestamp, int frameSamples)
+void WebRTCAudioSenderService::sendOpusPacket (const std::vector<unsigned char>& opusPacket)
 {
     try
     {
-        timestamp += frameSamples;
         auto rtpPacket = RTPWrapper::createRTPPacket (opusPacket, seqNum++, timestamp, ssrc);
-        juce::Logger::outputDebugString ("Sending packet: seqNum=" + std::to_string (seqNum) + ", timestamp=" + std::to_string (packetTimestamp) + "vs inTimestamp=" + std::to_string (timestamp) + ", size=" + std::to_string (rtpPacket.size()) + " bytes");
+        juce::Logger::outputDebugString ("Sending packet: seqNum=" + std::to_string (seqNum) + ", timestamp=" + std::to_string (timestamp) + ", size=" + std::to_string (rtpPacket.size()) + " bytes");
         audioTrack->send (reinterpret_cast<const std::byte*> (rtpPacket.data()), rtpPacket.size());
+        rtpPacket.clear();
     } catch (const std::exception& e)
     {
         juce::Logger::outputDebugString ("Error sending audio data: " + std::string (e.what()));
@@ -101,8 +98,11 @@ void WebRTCAudioSenderService::sendOpusPacket (const std::vector<unsigned char>&
 
 void WebRTCAudioSenderService::startAudioThread()
 {
-    threadRunning = true;
-    encodingThread = std::thread (&WebRTCAudioSenderService::processingThreadFunction, this);
+    if (!threadRunning && peerConnection->state() == rtc::PeerConnection::State::Connected)
+    {
+        threadRunning = true;
+        encodingThread = std::thread (&WebRTCAudioSenderService::processingThreadFunction, this);
+    }
 }
 
 void WebRTCAudioSenderService::stopAudioThread()

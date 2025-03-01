@@ -20,16 +20,20 @@ public:
     }
 
     static void customTerminateHandler() {
-        try {
-            std::rethrow_exception(std::current_exception());
-        } catch (const std::exception& e) {
-            reportCrash(e.what());
-        } catch (...) {
-            reportCrash("Unknown exception occurred");
+        std::exception_ptr exptr = std::current_exception();
+        if (exptr) { // Vérifier si une exception est active
+            try {
+                std::rethrow_exception(exptr);
+            } catch (const std::exception& e) {
+                reportCrash(e.what());
+            } catch (...) {
+                reportCrash("Unknown exception occurred");
+            }
+        } else {
+            reportCrash("Terminate called without an active exception");
         }
-        juce::Logger::outputDebugString("Crash report sent");
 
-        // Appeler le gestionnaire par défaut après votre rapport
+        juce::Logger::outputDebugString("Crash report sent");
         std::abort();
     }
 

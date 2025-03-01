@@ -34,7 +34,7 @@ private:
 
     void onAudioBlockProcessedEvent(const AudioBlockProcessedEvent &event) override;
 
-    void sendOpusPacket(const std::vector<unsigned char>& opusPacket,uint32_t packetTimestamp,int frameSamples);
+    void sendOpusPacket(const std::vector<unsigned char>& opusPacket);
 
     void processingThreadFunction();
 
@@ -44,18 +44,19 @@ private:
     uint32_t timestamp = 0;
     uint32_t ssrc = 12345;
 
-    std::deque<AudioBlockProcessedEvent> audioQueue;
 
-    std::atomic<bool> threadRunning{true};
-    std::thread encodingThread;
 
-    std::mutex audioQueueMutex;
     std::priority_queue<
         std::shared_ptr<AudioBlockProcessedEvent>,
         std::vector<std::shared_ptr<AudioBlockProcessedEvent> >,
         CompareAudioEvent
     > audioEventQueue;
     juce::CriticalSection dequeLock;
+    std::mutex audioQueueMutex;
+    std::deque<AudioBlockProcessedEvent> audioQueue;
+    std::thread encodingThread;
+    std::atomic<bool> threadRunning{true};
+
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (WebRTCAudioSenderService)
 

@@ -90,7 +90,7 @@ void WebRTCSenderConnexionHandler::setupConnection() {
     });
 
     rtc::Description::Audio newAudioTrack{};
-    newAudioTrack.addOpusCodec(111, "minptime=10;useinbandfec=0");
+    newAudioTrack.addOpusCodec(111, "minptime=" +  std::to_string(AudioSettings::getInstance().getLatency()) + ";useinbandfec=1");
     newAudioTrack.setBitrate(AudioSettings::getInstance().getOpusBitRate()); // Débit binaire en bits par seconde
     newAudioTrack.setDirection(rtc::Description::Direction::SendOnly);
     newAudioTrack.addSSRC(12345, "CNAME");;

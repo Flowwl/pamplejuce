@@ -23,21 +23,35 @@ public:
         if (sourceSampleRate == targetSampleRate) {
             return sourceVector;
         }
-        std::vector<double> doubleAudioBlock(sourceVector.begin(), sourceVector.end());
-        std::vector<double> resampledDoubleAudioBlock = resampleFromDouble(doubleAudioBlock);
+        std::vector<double> doubleAudioBlock(sourceVector.size());
+        std::transform(sourceVector.begin(), sourceVector.end(), doubleAudioBlock.begin(),
+                       [](float sample) { return static_cast<double>(sample); });
 
-        std::vector<float> resampledAudioBlock(resampledDoubleAudioBlock.begin(), resampledDoubleAudioBlock.end());
+        std::vector<double> resampledDoubleAudioBlock = resampleFromDouble(doubleAudioBlock);
+        std::vector<float> resampledAudioBlock(resampledDoubleAudioBlock.size());
+        std::transform(resampledDoubleAudioBlock.begin(), resampledDoubleAudioBlock.end(), resampledAudioBlock.begin(),
+                       [](double sample) { return static_cast<float>(sample); });
         return resampledAudioBlock;
     }
 
     std::vector<double> resampleFromDouble(std::vector<double>& sourceVector) const {
-        std::vector<double> outVector(std::floor(sourceVector.size() * targetSampleRate / sourceSampleRate), 0.0);
-        double* outBuffer = outVector.data();
-        resampler->process(sourceVector.data(), sourceVector.size(), outBuffer);
-        for (auto i = 0; i < outVector.size(); ++i) {
-            outVector[i] = std::clamp(outBuffer[i], -1.0, 1.0);
+
+        size_t outSize = std::ceil(sourceVector.size() * targetSampleRate / sourceSampleRate) + 10;
+        std::vector<double> outVector(outSize, 0.0);
+
+        double* outBuffer = nullptr;
+        int processedSamples = resampler->process(sourceVector.data(), sourceVector.size(), outBuffer);
+
+        if (processedSamples < 0) {
+            throw std::runtime_error("Resampler returned an error.");
         }
-        return outVector;
+
+        // Sécuriser la copie des données
+        return std::vector<double>(outBuffer, outBuffer + processedSamples);
+    }
+
+    double getScaleFactor() const {
+        return targetSampleRate / sourceSampleRate;
     }
 
 private:
