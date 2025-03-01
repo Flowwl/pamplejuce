@@ -14,19 +14,17 @@ include(JUCEDefaults)
 # Remove BUILD_SHARED_LIBS for libdatachannel
 set(BUILD_SHARED_LIBS OFF)
 set(USE_SYSTEM_SRTP ON)
-set(PROJECT_NAME "MeloVST")
 set(MELO_VST_SEND "MeloVSTSend")
 set(MELO_VST_RECEIVE "MeloVSTReceive")
 set(COMPANY_NAME "Melo Company")
-set(BUNDLE_ID "com.melo.MeloVST")
 set(FORMATS Standalone AU VST3 AUv3)
 set(USE_OPEN_SSL ON)
 set(USE_TLS ON)
 set(CMAKE_XCODE_ATTRIBUTE_CODE_SIGN_STYLE "Manual")
 set(CMAKE_XCODE_ATTRIBUTE_CODE_SIGN_IDENTITY "Developer ID Application: Silver Roves Studio (9W2L5R73RN)")
 set(CMAKE_XCODE_ATTRIBUTE_DEVELOPMENT_TEAM "9W2L5R73RN")
-set_property(GLOBAL PROPERTY USE_FOLDERS ON)
-
+#set_property(GLOBAL PROPERTY USE_FOLDERS ON)
+set(CURRENT_VERSION "0.0.1")
 project(${MELO_VST_SEND} VERSION ${CURRENT_VERSION})
 project(${MELO_VST_RECEIVE} VERSION ${CURRENT_VERSION})
 
@@ -43,10 +41,9 @@ add_subdirectory(JUCE)
 # Add CLAP format
 add_subdirectory(modules/clap-juce-extensions EXCLUDE_FROM_ALL)
 
-#juce_add_binary_data(r8brain SOURCES modules/r8brain/r8bbase.cpp)
 include_directories(modules/r8brain)
 add_library(r8brain STATIC)
-target_sources(r8brain PRIVATE modules/r8brain/r8bbase.cpp)
+target_sources(r8brain PRIVATE "modules/r8brain/r8bbase.cpp")
 
 # This adds the melatonin inspector module
 add_subdirectory(modules/ssl)
@@ -64,22 +61,24 @@ link_directories(${OPENSSL_LIBRARIES})
 juce_add_plugin("${MELO_VST_SEND}"
         ICON_BIG "${CMAKE_CURRENT_SOURCE_DIR}/packaging/icon.png"
         COMPANY_NAME "${COMPANY_NAME}"
-        BUNDLE_ID "${BUNDLE_ID}"
+        BUNDLE_ID "com.melo.${MELO_VST_SEND}"
         COPY_PLUGIN_AFTER_BUILD TRUE
         PLUGIN_MANUFACTURER_CODE Melo
         PLUGIN_CODE MS01
         FORMATS "${FORMATS}"
         PRODUCT_NAME "${MELO_VST_SEND}"
+        VERSION 0.0.1
+        BUILD_VERSION 0.0.1
         COMPANY_WEBSITE "https://studio-melo.com"
         COMPANY_EMAIL "contact@studio-melo.com"
         DESCRIPTION "Melo Plugin to send the music to the artist"
-#        HARDENED_RUNTIME_ENABLED TRUE
+        #        HARDENED_RUNTIME_ENABLED TRUE
 )
 
 juce_add_plugin("${MELO_VST_RECEIVE}"
         ICON_BIG "${CMAKE_CURRENT_SOURCE_DIR}/packaging/icon.png"
         COMPANY_NAME "${COMPANY_NAME}"
-        BUNDLE_ID "${BUNDLE_ID}"
+        BUNDLE_ID "com.melo.${MELO_VST_RECEIVE}"
         COPY_PLUGIN_AFTER_BUILD TRUE
         PLUGIN_MANUFACTURER_CODE Melo
         PLUGIN_CODE MR01
@@ -97,13 +96,13 @@ juce_add_plugin("${MELO_VST_RECEIVE}"
 # Without running into ODR violations
 add_library(SharedCode INTERFACE)
 
-clap_juce_extensions_plugin(TARGET ${MELO_VST_SEND}
-        CLAP_ID "${BUNDLE_ID}"
+clap_juce_extensions_plugin(TARGET "${MELO_VST_SEND}"
+        CLAP_ID "com.melo.${MELO_VST_SEND}"
         CLAP_FEATURES audio-effect
 )
 
-clap_juce_extensions_plugin(TARGET ${MELO_VST_RECEIVE}
-        CLAP_ID "${BUNDLE_ID}"
+clap_juce_extensions_plugin(TARGET "${MELO_VST_RECEIVE}"
+        CLAP_ID "com.melo.${MELO_VST_RECEIVE}"
         CLAP_FEATURES audio-effect
 )
 
@@ -141,7 +140,7 @@ target_compile_definitions(SharedCode
         VERSION="${CURRENT_VERSION}"
 
         # JucePlugin_Name is for some reason doesn't use the nicer PRODUCT_NAME
-        PRODUCT_NAME_WITHOUT_VERSION="MeloVST"
+        PRODUCT_NAME_WITHOUT_VERSION="MeloVSTSend"
 )
 # Link to any other modules you added (with juce_add_module) here!
 # Usually JUCE modules must have PRIVATE visibility
@@ -150,8 +149,6 @@ target_compile_definitions(SharedCode
 # This allows the JUCE plugin targets and the Tests target to link against it
 target_link_libraries(SharedCode
         INTERFACE
-        OpenSSL::SSL
-        OpenSSL::Crypto
         opus
         datachannel
         datachannel-static
@@ -169,42 +166,42 @@ target_link_libraries(SharedCode
         juce::juce_recommended_warning_flags
 )
 
-target_link_libraries(${MELO_VST_SEND} PRIVATE SharedCode)
-target_link_libraries(${MELO_VST_RECEIVE} PRIVATE SharedCode)
-target_compile_definitions(${MELO_VST_RECEIVE} PRIVATE IN_RECEIVING_MODE=1)
-set_target_properties(${MELO_VST_SEND} PROPERTIES
+target_link_libraries("${MELO_VST_SEND}" PRIVATE SharedCode)
+target_link_libraries("${MELO_VST_RECEIVE}" PRIVATE SharedCode)
+target_compile_definitions("${MELO_VST_RECEIVE}" PRIVATE IN_RECEIVING_MODE=1)
+set_target_properties("${MELO_VST_SEND}" PROPERTIES
         XCODE_ATTRIBUTE_CODE_SIGN_STYLE "${CMAKE_XCODE_ATTRIBUTE_CODE_SIGN_STYLE}"
         XCODE_ATTRIBUTE_CODE_SIGN_IDENTITY "${CMAKE_XCODE_ATTRIBUTE_CODE_SIGN_IDENTITY}"
         XCODE_ATTRIBUTE_DEVELOPMENT_TEAM "${CMAKE_XCODE_ATTRIBUTE_DEVELOPMENT_TEAM}"
 )
-set_target_properties(${MELO_VST_RECEIVE} PROPERTIES
+set_target_properties("${MELO_VST_RECEIVE}" PROPERTIES
         XCODE_ATTRIBUTE_CODE_SIGN_STYLE "${CMAKE_XCODE_ATTRIBUTE_CODE_SIGN_STYLE}"
         XCODE_ATTRIBUTE_CODE_SIGN_IDENTITY "${CMAKE_XCODE_ATTRIBUTE_CODE_SIGN_IDENTITY}"
         XCODE_ATTRIBUTE_DEVELOPMENT_TEAM "${CMAKE_XCODE_ATTRIBUTE_DEVELOPMENT_TEAM}"
 )
 
 MESSAGE(STATUS "CMAKE_CURRENT_SOURCE_DIR: ${CMAKE_CURRENT_SOURCE_DIR}")
-add_custom_command(TARGET ${MELO_VST_RECEIVE} POST_BUILD
-        # Créer le dossier Resources dans le bundle
-        COMMAND ${CMAKE_COMMAND} -E make_directory
-        "MeloVSTReceive_artefacts/Debug/VST3/MeloVSTReceive.vst3/Contents/MacOS"
-        # Copier le fichier certificate dans Resources
-        COMMAND ${CMAKE_COMMAND} -E copy_if_different
-        "${CMAKE_SOURCE_DIR}/assets/ca-certificates.crt"
-        "MeloVSTReceive_artefacts/Debug/VST3/MeloVSTReceive.vst3/Contents/MacOS/ca-certificates.crt"
-        COMMENT "Copie du certificat dans le bundle VST3 (Contents/Resources)"
-)
+#add_custom_command(TARGET ${MELO_VST_RECEIVE} POST_BUILD
+#        # Créer le dossier Resources dans le bundle
+#        COMMAND ${CMAKE_COMMAND} -E make_directory
+#        "MeloVSTReceive_artefacts/Debug/VST3/MeloVSTReceive.vst3/Contents/MacOS"
+#        # Copier le fichier certificate dans Resources
+#        COMMAND ${CMAKE_COMMAND} -E copy_if_different
+#        "${CMAKE_SOURCE_DIR}/assets/ca-certificates.crt"
+#        "MeloVSTReceive_artefacts/Debug/VST3/MeloVSTReceive.vst3/Contents/MacOS/ca-certificates.crt"
+#        COMMENT "Copie du certificat dans le bundle VST3 (Contents/Resources)"
+#)
 
-add_custom_command(TARGET ${MELO_VST_SEND} POST_BUILD
-        # Créer le dossier Resources dans le bundle
-        COMMAND ${CMAKE_COMMAND} -E make_directory
-        "MeloVSTSend_artefacts/Debug/VST3/MeloVSTSend.vst3/Contents/MacOS"
-        # Copier le fichier certificate dans Resources
-        COMMAND ${CMAKE_COMMAND} -E copy_if_different
-        "${CMAKE_SOURCE_DIR}/assets/ca-certificates.crt"
-        "MeloVSTSend_artefacts/Debug/VST3/MeloVSTSend.vst3/Contents/MacOS/ca-certificates.crt"
-        COMMENT "Copie du certificat dans le bundle VST3 (Contents/Resources)"
-)
+#add_custom_command(TARGET "${MELO_VST_SEND}" POST_BUILD
+#        # Créer le dossier Resources dans le bundle
+#        COMMAND ${CMAKE_COMMAND} -E make_directory
+#        "MeloVSTSend_artefacts/Debug/VST3/MeloVSTSend.vst3/Contents/MacOS"
+#        # Copier le fichier certificate dans Resources
+#        COMMAND ${CMAKE_COMMAND} -E copy_if_different
+#        "${CMAKE_SOURCE_DIR}/assets/ca-certificates.crt"
+#        "MeloVSTSend_artefacts/Debug/VST3/MeloVSTSend.vst3/Contents/MacOS/ca-certificates.crt"
+#        COMMENT "Copie du certificat dans le bundle VST3 (Contents/Resources)"
+#)
 
 
 # IPP support, comment out to disable
@@ -225,18 +222,18 @@ if (IXWEB_INCLUDE)
     # Sépare la chaîne en une liste d'arguments
     separate_arguments(IXWEB_INCLUDE_LIST UNIX_COMMAND "${IXWEB_INCLUDE}")
     set(new_includes "")
-    foreach(item IN LISTS IXWEB_INCLUDE_LIST)
+    foreach (item IN LISTS IXWEB_INCLUDE_LIST)
         message(STATUS "item: ${item}")
         # Vérifie si item contient le chemin à supprimer
         string(FIND "${item}" "modules/ixwebsocket" pos)
         if (pos EQUAL -1)
             list(APPEND new_includes "${item}")
-        else()
+        else ()
             message(STATUS "Removing: ${item}")
-        endif()
-    endforeach()
+        endif ()
+    endforeach ()
     message(STATUS "new_includes: ${new_includes}")
     set_target_properties(ixwebsocket PROPERTIES INTERFACE_INCLUDE_DIRECTORIES "${new_includes}")
-endif()
+endif ()
 
 target_link_libraries(ixwebsocket PRIVATE OpenSSL::SSL OpenSSL::Crypto)
