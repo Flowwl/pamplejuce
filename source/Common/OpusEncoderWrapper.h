@@ -16,12 +16,12 @@ public:
 
         // Configuration de l'encodeur
         opus_encoder_ctl(encoder, OPUS_SET_BITRATE(bitrate));
-        // opus_encoder_ctl(encoder, OPUS_SET_BITRATE(OPUS_AUTO));
-        // opus_encoder_ctl(encoder, OPUS_SET_PACKET_LOSS_PERC(0));
-        // opus_encoder_ctl(encoder, OPUS_SET_COMPLEXITY(5));
-        // opus_encoder_ctl(encoder, OPUS_SET_INBAND_FEC(0));
-        // opus_encoder_ctl(encoder, OPUS_SET_DTX(0));
-        // opus_decoder_ctl(decoder, OPUS_SET_GAIN(1));
+        opus_encoder_ctl(encoder, OPUS_SET_BITRATE(OPUS_AUTO));
+        opus_encoder_ctl (encoder, OPUS_SET_BANDWIDTH(OPUS_BANDWIDTH_WIDEBAND));
+        opus_encoder_ctl(encoder, OPUS_SET_PACKET_LOSS_PERC(10));
+        opus_encoder_ctl(encoder, OPUS_SET_COMPLEXITY(5));
+        opus_encoder_ctl(encoder, OPUS_SET_INBAND_FEC(1));
+        opus_encoder_ctl(encoder, OPUS_SET_DTX(0));
 
         frameSizePerChannel = sampleRate / 1000 * frameDurationInMs;
         frame_size_ = sample_rate / 1000 * channels * duration_ms;

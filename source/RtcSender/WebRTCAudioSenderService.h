@@ -24,18 +24,15 @@ public:
     WebRTCAudioSenderService();
 
     ~WebRTCAudioSenderService() override;
+    void disconnect();
 
 private:
     void stopAudioThread();
-
     void startAudioThread();
-
     void onRTCStateChanged(const RTCStateChangeEvent &event) override;
-
     void onAudioBlockProcessedEvent(const AudioBlockProcessedEvent &event) override;
-
     void sendOpusPacket(const std::vector<unsigned char>& opusPacket);
-
+    void sendAudioData (const std::vector<float>& accumulationBuffer);
     void processingThreadFunction();
 
     OpusEncoderWrapper opusEncoder;
@@ -44,6 +41,8 @@ private:
     uint32_t timestamp = 0;
     uint32_t ssrc = 12345;
 
+    uint32_t dawFrameSamplesPerChannel = 0;
+    uint32_t dawFrameSamplesWithAllChannels = 0;
 
 
     std::priority_queue<
@@ -51,10 +50,12 @@ private:
         std::vector<std::shared_ptr<AudioBlockProcessedEvent> >,
         CompareAudioEvent
     > audioEventQueue;
-    juce::CriticalSection dequeLock;
     std::mutex audioQueueMutex;
     std::deque<AudioBlockProcessedEvent> audioQueue;
+    std::condition_variable audioQueueCondVar;
+
     std::thread encodingThread;
+    std::mutex threadMutex;
     std::atomic<bool> threadRunning{true};
 
 

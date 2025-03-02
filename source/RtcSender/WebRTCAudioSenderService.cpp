@@ -22,63 +22,93 @@ WebRTCAudioSenderService::~WebRTCAudioSenderService()
     stopAudioThread();
 }
 
-void WebRTCAudioSenderService::onAudioBlockProcessedEvent (const AudioBlockProcessedEvent& event)
+void WebRTCAudioSenderService::onAudioBlockProcessedEvent(const AudioBlockProcessedEvent& event)
 {
     if (event.data.empty())
     {
         return;
     }
     {
-        std::lock_guard<std::mutex> lock (audioQueueMutex);
-        audioEventQueue.push (std::make_shared<AudioBlockProcessedEvent> (event));
-        startAudioThread();
+        std::lock_guard<std::mutex> lock(audioQueueMutex);
+        if (!threadRunning) return;
+        audioEventQueue.push(std::make_shared<AudioBlockProcessedEvent>(event));
     }
+    audioQueueCondVar.notify_one();
 }
 
 void WebRTCAudioSenderService::processingThreadFunction()
 {
-    // 48000 * 20/1000 = 960
-    const int dawFrameSamplesPerChannel = static_cast<int>(AudioSettings::getInstance().getSampleRate() * AudioSettings::getInstance().getLatency() / 1000.0);
-    // 960 * 2 = 1920
-    const int dawFrameSamplesWithAllChannels = dawFrameSamplesPerChannel * AudioSettings::getInstance().getNumChannels();
-
     std::vector<float> accumulationBuffer;
     accumulationBuffer.reserve(dawFrameSamplesWithAllChannels * 2);
 
-    while (threadRunning)
+    while (threadRunning.load())
     {
+        std::unique_lock<std::mutex> lock(audioQueueMutex);
+        audioQueueCondVar.wait(lock, [this]() { return !audioEventQueue.empty() || !threadRunning.load(); });
+
+        if (!threadRunning.load()) break; // Vérification après `wait()`
+
+        while (!audioEventQueue.empty())
         {
-            const juce::ScopedLock sl(dequeLock);
-            while (!audioEventQueue.empty())
-            {
-                auto eventPtr = audioEventQueue.top();
-                audioEventQueue.pop();
-                accumulationBuffer.reserve(accumulationBuffer.size() + eventPtr->data.size());
-                accumulationBuffer.insert(accumulationBuffer.end(), eventPtr->data.begin(), eventPtr->data.end());
-            }
+            auto eventPtr = audioEventQueue.top();
+            audioEventQueue.pop();
+
+            if (!eventPtr) continue; // Vérification de validité
+
+            accumulationBuffer.insert(accumulationBuffer.end(), eventPtr->data.begin(), eventPtr->data.end());
         }
+
+        lock.unlock(); // Libération du mutex avant traitement audio
 
         while (accumulationBuffer.size() >= static_cast<size_t>(dawFrameSamplesWithAllChannels))
         {
-            std::vector<float> frameData(accumulationBuffer.begin(), accumulationBuffer.begin() + dawFrameSamplesWithAllChannels);
-
-            // EventManager::getInstance().notifyOnAudioBlockSent(AudioBlockSentEvent{ frameData, packetTimestamp });
-            auto resampledData = resampler.resampleFromFloat(frameData);
-            auto resampledFrameSamplesPerChannel = resampledData.size() / AudioSettings::getInstance().getNumChannels();
-            std::vector<unsigned char> opusPacket = opusEncoder.encode_float(resampledData, resampledFrameSamplesPerChannel);
-            timestamp += resampledFrameSamplesPerChannel;
-            resampledData.clear();
-            if (!opusPacket.empty() && audioTrack)
-            {
-                sendOpusPacket(opusPacket);
-            }
-            opusPacket.clear();
-            if (accumulationBuffer.size() >= static_cast<size_t>(dawFrameSamplesWithAllChannels)) {
-                accumulationBuffer.erase(accumulationBuffer.begin(), accumulationBuffer.begin() + dawFrameSamplesWithAllChannels);
-            }
+            sendAudioData(accumulationBuffer);
+            accumulationBuffer.erase(accumulationBuffer.begin(), accumulationBuffer.begin() + dawFrameSamplesWithAllChannels);
         }
 
-        std::this_thread::sleep_for(std::chrono::milliseconds(2));
+        std::this_thread::sleep_for(std::chrono::milliseconds(5));
+    }
+}
+
+void WebRTCAudioSenderService::startAudioThread()
+{
+    std::lock_guard<std::mutex> lock(threadMutex);
+    if (!threadRunning)
+    {
+        dawFrameSamplesPerChannel = static_cast<int>(AudioSettings::getInstance().getSampleRate() * AudioSettings::getInstance().getLatency() / 1000.0);
+        dawFrameSamplesWithAllChannels = dawFrameSamplesPerChannel * AudioSettings::getInstance().getNumChannels();
+
+        threadRunning = true;
+        encodingThread = std::thread(&WebRTCAudioSenderService::processingThreadFunction, this);
+    }
+}
+
+void WebRTCAudioSenderService::stopAudioThread()
+{
+    {
+        std::lock_guard<std::mutex> lock(threadMutex);
+        if (!threadRunning) return;
+        threadRunning = false;
+    }
+
+    audioQueueCondVar.notify_all();
+    if (encodingThread.joinable())
+    {
+        encodingThread.join();
+    }
+}
+
+void WebRTCAudioSenderService::sendAudioData (const std::vector<float>& accumulationBuffer)
+{
+    const std::vector<float> frameData (accumulationBuffer.begin(), accumulationBuffer.begin() + dawFrameSamplesWithAllChannels);
+    const auto resampledData = resampler.resampleFromFloat (frameData);
+    const auto resampledFrameSamplesPerChannel = resampledData.size() / AudioSettings::getInstance().getNumChannels();
+    std::vector<unsigned char> opusPacket = opusEncoder.encode_float(resampledData, resampledFrameSamplesPerChannel);
+    timestamp += resampledFrameSamplesPerChannel;
+
+    if (!opusPacket.empty() && audioTrack)
+    {
+        sendOpusPacket(opusPacket);
     }
 }
 
@@ -86,6 +116,11 @@ void WebRTCAudioSenderService::sendOpusPacket (const std::vector<unsigned char>&
 {
     try
     {
+        if (!audioTrack)
+        {
+            juce::Logger::outputDebugString ("Error: audioTrack is null, skipping packet.");
+            return;
+        }
         auto rtpPacket = RTPWrapper::createRTPPacket (opusPacket, seqNum++, timestamp, ssrc);
         juce::Logger::outputDebugString ("Sending packet: seqNum=" + std::to_string (seqNum) + ", timestamp=" + std::to_string (timestamp) + ", size=" + std::to_string (rtpPacket.size()) + " bytes");
         audioTrack->send (reinterpret_cast<const std::byte*> (rtpPacket.data()), rtpPacket.size());
@@ -96,20 +131,10 @@ void WebRTCAudioSenderService::sendOpusPacket (const std::vector<unsigned char>&
     }
 }
 
-void WebRTCAudioSenderService::startAudioThread()
+void WebRTCAudioSenderService::disconnect()
 {
-    if (!threadRunning && peerConnection->state() == rtc::PeerConnection::State::Connected)
-    {
-        threadRunning = true;
-        encodingThread = std::thread (&WebRTCAudioSenderService::processingThreadFunction, this);
-    }
-}
-
-void WebRTCAudioSenderService::stopAudioThread()
-{
-    threadRunning = false;
-    if (encodingThread.joinable())
-        encodingThread.join();
+    stopAudioThread();
+    WebRTCSenderConnexionHandler::disconnect();
 }
 
 void WebRTCAudioSenderService::onRTCStateChanged (const RTCStateChangeEvent& event)
