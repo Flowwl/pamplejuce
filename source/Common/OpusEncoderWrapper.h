@@ -16,7 +16,6 @@ public:
 
         // Configuration de l'encodeur
         opus_encoder_ctl(encoder, OPUS_SET_BITRATE(bitrate));
-        opus_encoder_ctl(encoder, OPUS_SET_BITRATE(OPUS_AUTO));
         opus_encoder_ctl (encoder, OPUS_SET_BANDWIDTH(OPUS_BANDWIDTH_WIDEBAND));
         opus_encoder_ctl(encoder, OPUS_SET_PACKET_LOSS_PERC(10));
         opus_encoder_ctl(encoder, OPUS_SET_COMPLEXITY(5));
@@ -31,7 +30,7 @@ public:
     }
 
     std::vector<unsigned char> encode_float(const std::vector<float>& pcm, const int frameSize) {
-        std::vector<unsigned char> res(4000, 0);
+        std::vector<unsigned char> res(MAX_OPUS_PACKET_SIZE, 0);
         //check if the number of samples is valid use the available frame sizes
         int nextFrameSize = findNextAvailableFrameSize(frameSize);
         if (std::find(availableframeSizes.begin(), availableframeSizes.end(), nextFrameSize) == availableframeSizes.end()) {
@@ -48,12 +47,11 @@ public:
     }
 
     int findNextAvailableFrameSize(const int frameSize) {
-        const auto it = std::upper_bound(availableframeSizes.begin(), availableframeSizes.end(), frameSize);
-
+        auto it = std::lower_bound(availableframeSizes.begin(), availableframeSizes.end(), frameSize);
         if (it != availableframeSizes.end()) {
-            return *it;  // Retourne le prochain frameSize disponible
+            return *it;  // 🔹 Prend le plus proche supérieur ou égal
         }
-        return availableframeSizes.back();  // Si frameSize est trop grand, retourne le dernier
+        return -1;  // 🔹 Retourne une erreur si aucun ne convient
     }
 
 private:

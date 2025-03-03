@@ -35,7 +35,8 @@ void WebRTCAudioSenderSendingHandler::sendAudioData (const std::vector<float>& a
 
     const auto resampledFrameSamplesPerChannel = resampledData.size() / Config::getInstance().dawNumChannels;
     std::vector<unsigned char> opusPacket = opusEncoder.encode_float (resampledData, resampledFrameSamplesPerChannel);
-    timestamp += resampledFrameSamplesPerChannel;
+    double ratio = (double) Config::getInstance().dawSampleRate / Config::getInstance().opusSampleRate;
+    timestamp += resampledFrameSamplesPerChannel * ratio;
 
     if (opusPacket.empty())
     {

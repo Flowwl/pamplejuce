@@ -25,16 +25,23 @@ public:
         if (sourceSampleRate == targetSampleRate) {
             return sourceVector;
         }
-        std::vector<double> doubleAudioBlock(sourceVector.size());
-        std::transform(sourceVector.begin(), sourceVector.end(), doubleAudioBlock.begin(),
-                       [](float sample) { return static_cast<double>(sample); });
 
-        std::vector<double> resampledDoubleAudioBlock = resampleFromDouble(doubleAudioBlock);
-        std::vector<float> resampledAudioBlock(resampledDoubleAudioBlock.size());
-        std::transform(resampledDoubleAudioBlock.begin(), resampledDoubleAudioBlock.end(), resampledAudioBlock.begin(),
-                       [](double sample) { return static_cast<float>(sample); });
-        return resampledAudioBlock;
+        double resampleRatio = static_cast<double>(targetSampleRate) / sourceSampleRate;
+        size_t outSize = static_cast<size_t>(std::ceil(sourceVector.size() * resampleRatio));
+
+        std::vector<double> sourceDouble(sourceVector.begin(), sourceVector.end());
+        std::vector<double> outDouble(outSize, 0.0);
+        auto outData = outDouble.data();
+
+        int processedSamples = resampler->process(sourceDouble.data(), sourceDouble.size(), outData);
+        if (processedSamples < 0) {
+            throw std::runtime_error("Resampler returned an error.");
+        }
+
+        std::vector<float> outVector(outDouble.begin(), outDouble.begin() + processedSamples);
+        return outVector;
     }
+
 
     std::vector<double> resampleFromDouble(std::vector<double>& sourceVector) const {
         size_t outSize = std::ceil(targetSampleRate * Config::getInstance().latencyInMs / 1000 * numChannels);

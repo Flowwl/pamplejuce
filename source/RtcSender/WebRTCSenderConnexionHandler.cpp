@@ -96,6 +96,7 @@ void WebRTCSenderConnexionHandler::setupConnection() {
     newAudioTrack.setDirection(rtc::Description::Direction::SendOnly);
     newAudioTrack.addSSRC(Config::getInstance().ssrc, Config::getInstance().cname);
     audioTrack = peerConnection->addTrack(static_cast<rtc::Description::Media>(newAudioTrack));
+    audioTrack->setBufferedAmountLowThreshold (100);
     setOffer();
 }
 
