@@ -23,7 +23,7 @@ public:
 
     // Audio
     const u_int32_t opusSampleRate = 48000;
-    const int latencyInMs = 20;
+    const int latencyInMs = 25;
     const u_int32_t opusBitRate = 96000;
     int dawBitDepth = 16;
     u_int32_t dawSampleRate = 44100;

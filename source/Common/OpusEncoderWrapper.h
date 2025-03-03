@@ -8,7 +8,7 @@
 
 class OpusEncoderWrapper {
 public:
-    OpusEncoderWrapper(const int sample_rate, const int channels, const int duration_ms, const int bitrate): frameDurationInMs(duration_ms), numChannels(channels), sampleRate(sample_rate) {
+    OpusEncoderWrapper(const int sample_rate, const int channels, const int bitrate): numChannels(channels), sampleRate(sample_rate) {
         int error;
         encoder = opus_encoder_create(sample_rate, channels, OPUS_APPLICATION_VOIP, &error);
         if (error != OPUS_OK)
@@ -23,8 +23,6 @@ public:
         opus_encoder_ctl(encoder, OPUS_SET_INBAND_FEC(1));
         opus_encoder_ctl(encoder, OPUS_SET_DTX(0));
 
-        frameSizePerChannel = sampleRate / 1000 * frameDurationInMs;
-        frame_size_ = sample_rate / 1000 * channels * duration_ms;
     }
 
     ~OpusEncoderWrapper() {
@@ -32,11 +30,14 @@ public:
             opus_encoder_destroy(encoder);
     }
 
-    std::vector<unsigned char> encode_float(const std::vector<float>& pcm, const int nbSamples) const {
-        // On définit une taille maximale pour le paquet de sortie (par exemple 4000 octets)
+    std::vector<unsigned char> encode_float(const std::vector<float>& pcm, const int frameSize) const {
         std::vector<unsigned char> res(4000, 0);
-
-        const int ret = opus_encode_float(encoder, pcm.data(), nbSamples, res.data(), static_cast<int>(res.size()));
+        //check if the number of samples is valid use the available frame sizes
+        if (std::find(availableframeSizes.begin(), availableframeSizes.end(), frameSize) == availableframeSizes.end()) {
+            DBG ("Invalid frame size: " + std::to_string(frameSize));
+            return {};
+        }
+        const int ret = opus_encode_float(encoder, pcm.data(), frameSize, res.data(), static_cast<int>(res.size()));
         if (ret < 0) {
             return {};
         }
@@ -45,15 +46,20 @@ public:
         return res;
     }
 
+    int findNextAvailableFrameSize (const int frameSize) {
+        const auto it = std::find(availableframeSizes.begin(), availableframeSizes.end(), frameSize);
+        if (it == availableframeSizes.end()) {
+            return 0;
+        }
+        return *it;
+    }
 private:
     std::vector<int16_t> in_buffer_;
     std::vector<float> in_buffer_float_;
     OpusEncoder *encoder = nullptr;
-    int frame_size_;
-    int frameSizePerChannel;
-    int frameDurationInMs;
     int numChannels;
     int sampleRate;
+    std::vector<int> availableframeSizes = {120, 240, 480, 960, 1920, 2880};
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (OpusEncoderWrapper)
 

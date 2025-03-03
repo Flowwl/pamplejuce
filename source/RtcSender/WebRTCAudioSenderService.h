@@ -9,7 +9,7 @@
 
 #include "../Common/ResamplerWrapper.h"
 #include "WebRTCSenderConnexionHandler.h"
-#include "../Common/CircularBuffer.h"
+#include "WebRTCAudioSenderSendingHandler.h"
 
 struct CompareAudioEvent {
     bool operator()(const std::shared_ptr<AudioBlockProcessedEvent> &a,
@@ -31,19 +31,9 @@ private:
     void startAudioThread();
     void onRTCStateChanged(const RTCStateChangeEvent &event) override;
     void onAudioBlockProcessedEvent(const AudioBlockProcessedEvent &event) override;
-    void sendOpusPacket(const std::vector<unsigned char>& opusPacket);
-    void sendAudioData (const std::vector<float>& accumulationBuffer);
     void processingThreadFunction();
 
-    OpusEncoderWrapper opusEncoder;
-    ResamplerWrapper resampler;
-    uint16_t seqNum = 1;
-    uint32_t timestamp = 0;
-    uint32_t ssrc = 12345;
-
-    uint32_t dawFrameSamplesPerChannel = 0;
-    uint32_t dawFrameSamplesWithAllChannels = 0;
-
+    WebRTCAudioSenderSendingHandler sendingHandler;
 
     std::priority_queue<
         std::shared_ptr<AudioBlockProcessedEvent>,
@@ -56,10 +46,6 @@ private:
     std::thread encodingThread;
     std::mutex threadMutex;
     std::atomic<bool> threadRunning{true};
-
-    juce::int64 lastSentToRTCTime = juce::Time::currentTimeMillis();
-    juce::int64 now = juce::Time::currentTimeMillis();
-
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (WebRTCAudioSenderService)
 

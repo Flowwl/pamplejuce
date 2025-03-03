@@ -11,7 +11,6 @@ WebRTCAudioReceiverService::WebRTCAudioReceiverService(): WebRTCReceiverConnexio
                                                               WsRoute::GetOngoingSessionRTCVoice),
                                                           opusCodec(Config::getInstance().opusSampleRate,
                                                                     Config::getInstance().dawNumChannels,
-                                                                    Config::getInstance().latencyInMs,
                                                                     Config::getInstance().opusBitRate),
                                                           resampler(Config::getInstance().dawSampleRate,
                                                                     Config::getInstance().opusSampleRate,
