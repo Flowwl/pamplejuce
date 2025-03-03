@@ -52,7 +52,6 @@ private:
     > audioEventQueue;
     std::mutex audioQueueMutex;
     std::deque<AudioBlockProcessedEvent> audioQueue;
-    std::condition_variable audioQueueCondVar;
 
     std::thread encodingThread;
     std::mutex threadMutex;

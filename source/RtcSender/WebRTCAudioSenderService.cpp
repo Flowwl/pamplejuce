@@ -28,12 +28,16 @@ void WebRTCAudioSenderService::onAudioBlockProcessedEvent(const AudioBlockProces
     {
         return;
     }
-    {
-        std::lock_guard<std::mutex> lock(audioQueueMutex);
-        if (!threadRunning) return;
-        audioEventQueue.push(std::make_shared<AudioBlockProcessedEvent>(event));
+
+    if (!threadRunning) {
+        return;
     }
-    audioQueueCondVar.notify_one();
+
+    // {
+        // assert(audioQueueMutex.native_handle() != nullptr && "Mutex not initialized!");
+        // std::lock_guard<std::mutex> lock(audioQueueMutex);
+    // }
+    audioEventQueue.push(std::make_shared<AudioBlockProcessedEvent>(event));
 }
 
 void WebRTCAudioSenderService::processingThreadFunction()
@@ -43,8 +47,8 @@ void WebRTCAudioSenderService::processingThreadFunction()
 
     while (threadRunning.load())
     {
+        assert(audioQueueMutex.native_handle() != nullptr && "Mutex not initialized!");
         std::unique_lock<std::mutex> lock(audioQueueMutex);
-        audioQueueCondVar.wait(lock, [this]() { return !audioEventQueue.empty() || !threadRunning.load(); });
 
         if (!threadRunning.load()) break; // Vérification après `wait()`
 
@@ -91,7 +95,6 @@ void WebRTCAudioSenderService::stopAudioThread()
         threadRunning = false;
     }
 
-    audioQueueCondVar.notify_all();
     if (encodingThread.joinable())
     {
         encodingThread.join();

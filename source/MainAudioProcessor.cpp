@@ -1,7 +1,7 @@
 #include "MainAudioProcessor.h"
 #include "MainApplication.h"
 #include "AudioSettings.h"
-#include "Common/EventManager.h"
+#include "./Common/EventManager.h"
 #include <chrono>
 
 //==============================================================================
@@ -32,19 +32,11 @@ const juce::String MainAudioProcessor::getName() const {
 }
 
 bool MainAudioProcessor::acceptsMidi() const {
-#if JucePlugin_WantsMidiInput
-    return true;
-#else
     return false;
-#endif
 }
 
 bool MainAudioProcessor::producesMidi() const {
-#if JucePlugin_ProducesMidiOutput
     return true;
-#else
-    return false;
-#endif
 }
 
 bool MainAudioProcessor::isMidiEffect() const {
