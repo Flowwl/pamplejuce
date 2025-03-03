@@ -30,14 +30,15 @@ public:
             opus_encoder_destroy(encoder);
     }
 
-    std::vector<unsigned char> encode_float(const std::vector<float>& pcm, const int frameSize) const {
+    std::vector<unsigned char> encode_float(const std::vector<float>& pcm, const int frameSize) {
         std::vector<unsigned char> res(4000, 0);
         //check if the number of samples is valid use the available frame sizes
-        if (std::find(availableframeSizes.begin(), availableframeSizes.end(), frameSize) == availableframeSizes.end()) {
+        int nextFrameSize = findNextAvailableFrameSize(frameSize);
+        if (std::find(availableframeSizes.begin(), availableframeSizes.end(), nextFrameSize) == availableframeSizes.end()) {
             DBG ("Invalid frame size: " + std::to_string(frameSize));
             return {};
         }
-        const int ret = opus_encode_float(encoder, pcm.data(), frameSize, res.data(), static_cast<int>(res.size()));
+        const int ret = opus_encode_float(encoder, pcm.data(), nextFrameSize, res.data(), static_cast<int>(res.size()));
         if (ret < 0) {
             return {};
         }
@@ -46,20 +47,22 @@ public:
         return res;
     }
 
-    int findNextAvailableFrameSize (const int frameSize) {
-        const auto it = std::find(availableframeSizes.begin(), availableframeSizes.end(), frameSize);
-        if (it == availableframeSizes.end()) {
-            return 0;
+    int findNextAvailableFrameSize(const int frameSize) {
+        const auto it = std::upper_bound(availableframeSizes.begin(), availableframeSizes.end(), frameSize);
+
+        if (it != availableframeSizes.end()) {
+            return *it;  // Retourne le prochain frameSize disponible
         }
-        return *it;
+        return availableframeSizes.back();  // Si frameSize est trop grand, retourne le dernier
     }
+
 private:
+    std::vector<int> availableframeSizes = {120, 240, 480, 960, 1920, 2880};
     std::vector<int16_t> in_buffer_;
     std::vector<float> in_buffer_float_;
     OpusEncoder *encoder = nullptr;
     int numChannels;
     int sampleRate;
-    std::vector<int> availableframeSizes = {120, 240, 480, 960, 1920, 2880};
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (OpusEncoderWrapper)
 

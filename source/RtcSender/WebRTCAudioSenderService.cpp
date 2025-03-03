@@ -7,7 +7,7 @@
 
 #include <rtc/rtc.hpp>
 
-WebRTCAudioSenderService::WebRTCAudioSenderService() : WebRTCSenderConnexionHandler (WsRoute::GetOngoingSessionRTCInstru), sendingHandler(this->audioTrack)
+WebRTCAudioSenderService::WebRTCAudioSenderService() : WebRTCSenderConnexionHandler (WsRoute::GetOngoingSessionRTCInstru)
 {
 }
 
@@ -16,78 +16,73 @@ WebRTCAudioSenderService::~WebRTCAudioSenderService()
     stopAudioThread();
 }
 
-void WebRTCAudioSenderService::onAudioBlockProcessedEvent (const AudioBlockProcessedEvent& event)
+void WebRTCAudioSenderService::onAudioBlockProcessedEvent(const AudioBlockProcessedEvent& event)
 {
-    if (event.data.empty())
-    {
+    if (event.data.empty() || !threadRunning.load()) {
         return;
     }
 
-    if (!threadRunning)
+    auto eventPtr = std::make_shared<AudioBlockProcessedEvent>(event);
     {
-        return;
+        std::unique_lock<std::mutex> lock(audioQueueMutex);
+        audioEventQueue.push(eventPtr);
     }
-
-    // {
-    // assert(audioQueueMutex.native_handle() != nullptr && "Mutex not initialized!");
-    // std::lock_guard<std::mutex> lock(audioQueueMutex);
-    // }
-    audioEventQueue.push (std::make_shared<AudioBlockProcessedEvent> (event));
-    // juce::Logger::outputDebugString ("Added audio block, nb packets inside queue " + juce::String (audioEventQueue.size()));
+    cv.notify_one(); // Réveiller le thread
 }
 
 void WebRTCAudioSenderService::processingThreadFunction()
 {
     std::vector<float> accumulationBuffer;
-    accumulationBuffer.reserve (sendingHandler.getDawFrameSamplesWithAllChannels() * 2);
+    accumulationBuffer.reserve(sendingHandler.getDawFrameSamplesWithAllChannels() * 2);
 
-    const int targetFrameSamples = static_cast<int> (Config::getInstance().dawSampleRate * 20 / 1000.0) * Config::getInstance().dawNumChannels;
+    while (threadRunning.load()) {
+        std::unique_lock<std::mutex> lockCv(cvMutex);
+        cv.wait_for(lockCv, std::chrono::milliseconds(Config::getInstance().latencyInMs), [&]() { return threadShouldExit.load(); });
 
-    juce::int64 lastSendTime = juce::Time::currentTimeMillis();
+        if (threadShouldExit.load()) {
+            break; // Sortie propre
+        }
 
-    while (threadRunning.load())
+        lockCv.unlock(); // Libérer avant d'appeler processAudio
+        processAudio(accumulationBuffer);
+    }
+
+    juce::Logger::outputDebugString("Processing thread exited cleanly.");
+}
+
+
+void WebRTCAudioSenderService::processAudio(std::vector<float>& accumulationBuffer)
+{
+    std::vector<std::shared_ptr<AudioBlockProcessedEvent>> localQueue;
+
     {
-        juce::int64 processingStartTime = juce::Time::currentTimeMillis();
-
-        std::unique_lock<std::mutex> lock (audioQueueMutex);
-        while (!audioEventQueue.empty())
-        {
-            auto eventPtr = audioEventQueue.top();
+        std::unique_lock<std::mutex> lock(audioQueueMutex);
+        while (!audioEventQueue.empty()) {
+            localQueue.push_back(audioEventQueue.top());
             audioEventQueue.pop();
-
-            if (eventPtr)
-            {
-                accumulationBuffer.insert (accumulationBuffer.end(), eventPtr->data.begin(), eventPtr->data.end());
-                // juce::Logger::outputDebugString ("Added " + juce::String (eventPtr->data.size()) + " samples to buffer.");
-            }
         }
-        lock.unlock();
+    } // On libère le mutex ici, une fois la copie faite
 
-        while (accumulationBuffer.size() >= targetFrameSamples)
-        {
-            sendingHandler.sendAudioData (accumulationBuffer);
-            accumulationBuffer.erase (accumulationBuffer.begin(), accumulationBuffer.begin() + targetFrameSamples);
+    for (const auto& eventPtr : localQueue) {
+        if (eventPtr) {
+            accumulationBuffer.insert(accumulationBuffer.end(), eventPtr->data.begin(), eventPtr->data.end());
         }
+    }
 
-        juce::int64 processingEndTime = juce::Time::currentTimeMillis();
-        juce::int64 processingDuration = processingEndTime - processingStartTime;
-        juce::int64 waitTime = 20 - processingDuration;
-
-        if (waitTime > 0)
-        {
-            std::this_thread::sleep_for (std::chrono::milliseconds (waitTime));
-        }
-
-        lastSendTime = juce::Time::currentTimeMillis();
+    while (accumulationBuffer.size() >= sendingHandler.getDawFrameSamplesWithAllChannels()) {
+        sendingHandler.sendAudioData(accumulationBuffer);
+        accumulationBuffer.erase(accumulationBuffer.begin(), accumulationBuffer.begin() + sendingHandler.getDawFrameSamplesWithAllChannels());
     }
 }
+
 
 void WebRTCAudioSenderService::startAudioThread()
 {
     std::lock_guard<std::mutex> lock (threadMutex);
-    if (!threadRunning)
+    if (!threadRunning.load())
     {
-        sendingHandler.refreshFrameSamples ();
+        sendingHandler.refreshFrameSamples();
+        threadShouldExit = false;
         threadRunning = true;
         encodingThread = std::thread (&WebRTCAudioSenderService::processingThreadFunction, this);
     }
@@ -96,13 +91,16 @@ void WebRTCAudioSenderService::startAudioThread()
 void WebRTCAudioSenderService::stopAudioThread()
 {
     {
-        std::lock_guard<std::mutex> lock (threadMutex);
+        std::lock_guard<std::mutex> lock(threadMutex);
         threadRunning = false;
+        threadShouldExit = true;
     }
 
-    if (encodingThread.joinable())
-    {
+    cv.notify_all(); // Réveiller le thread immédiatement
+
+    if (encodingThread.joinable()) {
         encodingThread.join();
+        juce::Logger::outputDebugString("Audio thread stopped cleanly.");
     }
 }
 
@@ -116,6 +114,7 @@ void WebRTCAudioSenderService::onRTCStateChanged (const RTCStateChangeEvent& eve
 {
     if (event.state == rtc::PeerConnection::State::Connected && !threadRunning)
     {
+        sendingHandler.setAudioTrack (audioTrack);
         startAudioThread();
     }
     else

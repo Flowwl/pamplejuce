@@ -9,14 +9,15 @@
 
 class WebRTCAudioSenderSendingHandler {
 public:
-    WebRTCAudioSenderSendingHandler(std::shared_ptr<rtc::Track> audioTrack);
+    WebRTCAudioSenderSendingHandler();
     void sendAudioData (const std::vector<float>& accumulationBuffer);
     void refreshFrameSamples();
     int getDawFrameSamplesPerChannel() const { return dawFrameSamplesPerChannel; }
     int getDawFrameSamplesWithAllChannels() const { return dawFrameSamplesWithAllChannels; }
+    void setAudioTrack(const std::shared_ptr<rtc::Track>& audioTrack);
 private:
     void sendOpusPacket(const std::vector<unsigned char>& opusPacket);
-    std::shared_ptr<rtc::Track> audioTrack;
+    std::shared_ptr<rtc::Track> audioTrack = nullptr;
     OpusEncoderWrapper opusEncoder;
     ResamplerWrapper resampler;
     uint16_t seqNum = 1;

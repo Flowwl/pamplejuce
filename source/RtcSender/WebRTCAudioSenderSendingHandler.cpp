@@ -1,10 +1,14 @@
 #include "WebRTCAudioSenderSendingHandler.h"
 
-WebRTCAudioSenderSendingHandler::WebRTCAudioSenderSendingHandler(std::shared_ptr<rtc::Track> audioTrack) : opusEncoder (Config::getInstance().opusSampleRate, Config::getInstance().dawNumChannels, Config::getInstance().opusBitRate),
+WebRTCAudioSenderSendingHandler::WebRTCAudioSenderSendingHandler() : opusEncoder (Config::getInstance().opusSampleRate, Config::getInstance().dawNumChannels, Config::getInstance().opusBitRate),
                                                                      resampler (Config::getInstance().dawSampleRate, Config::getInstance().opusSampleRate, Config::getInstance().dawNumChannels)
 {
-    this->audioTrack = audioTrack;
     refreshFrameSamples();
+}
+
+void WebRTCAudioSenderSendingHandler::setAudioTrack (const std::shared_ptr<rtc::Track>& _audioTrack)
+{
+    this->audioTrack = _audioTrack;
 }
 
 void WebRTCAudioSenderSendingHandler::refreshFrameSamples ()
@@ -39,21 +43,19 @@ void WebRTCAudioSenderSendingHandler::sendAudioData (const std::vector<float>& a
         return;
     }
 
-    if (audioTrack)
+    if (!audioTrack)
     {
-        sendOpusPacket (opusPacket);
+        juce::Logger::outputDebugString ("Error: audioTrack is null, skipping packet.");
+        return;
     }
+    sendOpusPacket (opusPacket);
 }
 
 void WebRTCAudioSenderSendingHandler::sendOpusPacket (const std::vector<unsigned char>& opusPacket)
 {
     try
     {
-        if (!audioTrack)
-        {
-            juce::Logger::outputDebugString ("Error: audioTrack is null, skipping packet.");
-            return;
-        }
+        
 
         auto rtpPacket = RTPWrapper::createRTPPacket (opusPacket, seqNum++, timestamp, Config::getInstance().ssrc);
 

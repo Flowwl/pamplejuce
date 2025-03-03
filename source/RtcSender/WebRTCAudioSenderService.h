@@ -14,7 +14,10 @@
 struct CompareAudioEvent {
     bool operator()(const std::shared_ptr<AudioBlockProcessedEvent> &a,
                     const std::shared_ptr<AudioBlockProcessedEvent> &b) const {
-        // Plus ancien en haut de la file
+        // check null pointers
+        if (!a || !b) {
+            return false;
+        }
         return a->timestamp > b->timestamp;
     }
 };
@@ -31,6 +34,7 @@ private:
     void startAudioThread();
     void onRTCStateChanged(const RTCStateChangeEvent &event) override;
     void onAudioBlockProcessedEvent(const AudioBlockProcessedEvent &event) override;
+    void processAudio(std::vector<float> &accumulationBuffer);
     void processingThreadFunction();
 
     WebRTCAudioSenderSendingHandler sendingHandler;
@@ -45,7 +49,10 @@ private:
 
     std::thread encodingThread;
     std::mutex threadMutex;
-    std::atomic<bool> threadRunning{true};
+    std::atomic<bool> threadRunning{false};
+    std::atomic<bool> threadShouldExit { false };
+    std::condition_variable cv;
+    std::mutex cvMutex;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (WebRTCAudioSenderService)
 

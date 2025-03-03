@@ -3,12 +3,14 @@
 //
 
 #pragma once
-#include <vector>
+#include "../Config.h"
+
+#include <algorithm>
 #include <cmath>
 #include <memory>
-#include <algorithm>
-#include <r8brain/r8bbase.h>
 #include <r8brain/CDSPResampler.h>
+#include <r8brain/r8bbase.h>
+#include <vector>
 
 class ResamplerWrapper {
 public:
@@ -35,19 +37,19 @@ public:
     }
 
     std::vector<double> resampleFromDouble(std::vector<double>& sourceVector) const {
-
-        size_t outSize = std::ceil(sourceVector.size() * targetSampleRate / sourceSampleRate) + 10;
+        size_t outSize = std::ceil(targetSampleRate * Config::getInstance().latencyInMs / 1000 * numChannels);
         std::vector<double> outVector(outSize, 0.0);
 
-        double* outBuffer = nullptr;
+        double* outBuffer = outVector.data();  // Utiliser le buffer du vecteur
+
         int processedSamples = resampler->process(sourceVector.data(), sourceVector.size(), outBuffer);
 
         if (processedSamples < 0) {
             throw std::runtime_error("Resampler returned an error.");
         }
 
-        // Sécuriser la copie des données
-        return std::vector<double>(outBuffer, outBuffer + processedSamples);
+        outVector.resize(processedSamples);
+        return outVector;
     }
 
     double getScaleFactor() const {
