@@ -9,7 +9,7 @@ struct AudioBlockProcessedEvent {
     int numChannels;
     int numSamples;
     double sampleRate;
-    uint32_t timestamp;
+    juce::int64 timestamp;
 };
 
 struct AudioBlockSentEvent {

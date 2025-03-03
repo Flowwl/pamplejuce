@@ -57,6 +57,9 @@ private:
     std::mutex threadMutex;
     std::atomic<bool> threadRunning{true};
 
+    juce::int64 lastSentToRTCTime = juce::Time::currentTimeMillis();
+    juce::int64 now = juce::Time::currentTimeMillis();
+
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (WebRTCAudioSenderService)
 

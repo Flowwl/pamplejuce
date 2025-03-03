@@ -200,13 +200,12 @@ void MainAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer,
         return; // Vérification plus explicite
 
     // Envoyer l'événement avec std::move pour éviter les copies inutiles
-    uint32_t timestamp = std::chrono::steady_clock::now().time_since_epoch().count();
     EventManager::getInstance().notifyAudioBlockProcessed (AudioBlockProcessedEvent {
         std::move (pcmData), // Transfert des données
         numChannels,
         numSamples,
         getSampleRate(),
-        timestamp });
+        juce::Time::currentTimeMillis() });
 }
 #endif
 
