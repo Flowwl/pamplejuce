@@ -1,6 +1,6 @@
 #include "WebRTCAudioReceiverService.h"
 #include "../Debug/DebugRTPWrapper.h"
-#include "../AudioSettings.h"
+#include "../Config.h"
 #include "../Common/EventManager.h"
 #include <rtc/rtc.hpp>
 #include "../Api/SocketRoutes.h"
@@ -9,13 +9,13 @@ int error = 0;
 
 WebRTCAudioReceiverService::WebRTCAudioReceiverService(): WebRTCReceiverConnexionHandler(
                                                               WsRoute::GetOngoingSessionRTCVoice),
-                                                          opusCodec(AudioSettings::getInstance().getOpusSampleRate(),
-                                                                    AudioSettings::getInstance().getNumChannels(),
-                                                                    AudioSettings::getInstance().getLatency(),
-                                                                    AudioSettings::getInstance().getOpusBitRate()),
-                                                          resampler(AudioSettings::getInstance().getSampleRate(),
-                                                                    AudioSettings::getInstance().getOpusSampleRate(),
-                                                                    AudioSettings::getInstance().getNumChannels()),
+                                                          opusCodec(Config::getInstance().opusSampleRate,
+                                                                    Config::getInstance().dawNumChannels,
+                                                                    Config::getInstance().latencyInMs,
+                                                                    Config::getInstance().opusBitRate),
+                                                          resampler(Config::getInstance().dawSampleRate,
+                                                                    Config::getInstance().opusSampleRate,
+                                                                    Config::getInstance().dawNumChannels),
                                                           decoder(opus_decoder_create(48000, 1, &error))
 {
     if (error != OPUS_OK) {

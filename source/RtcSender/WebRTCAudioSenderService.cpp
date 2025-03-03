@@ -1,19 +1,15 @@
 #include "WebRTCAudioSenderService.h"
+
 #include "../Api/SocketRoutes.h"
-#include "../AudioSettings.h"
 #include "../Common/EventManager.h"
 #include "../Debug/DebugRTPWrapper.h"
+#include "../Config.h"
 
 #include <rtc/rtc.hpp>
 
 WebRTCAudioSenderService::WebRTCAudioSenderService() : WebRTCSenderConnexionHandler (WsRoute::GetOngoingSessionRTCInstru),
-                                                       opusEncoder (AudioSettings::getInstance().getOpusSampleRate(),
-                                                           AudioSettings::getInstance().getNumChannels(),
-                                                           AudioSettings::getInstance().getLatency(),
-                                                           AudioSettings::getInstance().getOpusBitRate()),
-                                                       resampler (AudioSettings::getInstance().getSampleRate(),
-                                                           AudioSettings::getInstance().getOpusSampleRate(),
-                                                           AudioSettings::getInstance().getNumChannels())
+                                                       opusEncoder (Config::getInstance().opusSampleRate, Config::getInstance().dawNumChannels, Config::getInstance().latencyInMs, Config::getInstance().opusBitRate),
+                                                       resampler (Config::getInstance().dawSampleRate, Config::getInstance().opusSampleRate,Config::getInstance().dawNumChannels)
 {
 }
 
@@ -79,8 +75,8 @@ void WebRTCAudioSenderService::startAudioThread()
     std::lock_guard<std::mutex> lock(threadMutex);
     if (!threadRunning)
     {
-        dawFrameSamplesPerChannel = static_cast<int>(AudioSettings::getInstance().getSampleRate() * AudioSettings::getInstance().getLatency() / 1000.0);
-        dawFrameSamplesWithAllChannels = dawFrameSamplesPerChannel * AudioSettings::getInstance().getNumChannels();
+        dawFrameSamplesPerChannel = static_cast<int>(Config::getInstance().dawSampleRate * Config::getInstance().latencyInMs / 1000.0);
+        dawFrameSamplesWithAllChannels = dawFrameSamplesPerChannel * Config::getInstance().dawNumChannels;
 
         threadRunning = true;
         encodingThread = std::thread(&WebRTCAudioSenderService::processingThreadFunction, this);
@@ -105,7 +101,7 @@ void WebRTCAudioSenderService::sendAudioData (const std::vector<float>& accumula
 {
     const std::vector<float> frameData (accumulationBuffer.begin(), accumulationBuffer.begin() + dawFrameSamplesWithAllChannels);
     const auto resampledData = resampler.resampleFromFloat (frameData);
-    const auto resampledFrameSamplesPerChannel = resampledData.size() / AudioSettings::getInstance().getNumChannels();
+    const auto resampledFrameSamplesPerChannel = resampledData.size() / Config::getInstance().dawNumChannels;
     std::vector<unsigned char> opusPacket = opusEncoder.encode_float(resampledData, resampledFrameSamplesPerChannel);
     timestamp += resampledFrameSamplesPerChannel;
 

@@ -96,5 +96,5 @@ juce::URL::InputStreamOptions ApiService::buildOptions()
 // Méthode pour construire l'URL complète
 juce::String ApiService::buildApiUrl(const ApiRoute route)
 {
-    return Config::apiUrl + getApiRouteString(route);
+    return Config::getInstance().apiUrl + getApiRouteString(route);
 }

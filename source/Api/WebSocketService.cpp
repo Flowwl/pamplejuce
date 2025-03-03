@@ -44,7 +44,7 @@ bool WebSocketService::isConnected() const {
 }
 
 void WebSocketService::connectToServer() {
-    const auto url = juce::String(Config::websocketUrl + wsRoute).toStdString();
+    const auto url = juce::String(Config::getInstance().websocketUrl + wsRoute).toStdString();
     juce::Logger::outputDebugString("Connecting to WebSocket server at " + url);
 
     webSocket.setUrl(url);

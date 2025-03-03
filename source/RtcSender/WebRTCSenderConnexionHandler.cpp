@@ -1,8 +1,9 @@
 #include "WebRTCSenderConnexionHandler.h"
+
+#include "../Api/SocketRoutes.h"
 #include "../Common/EventManager.h"
 #include "../ThirdParty/json.hpp"
-#include "../AudioSettings.h"
-#include "../Api/SocketRoutes.h"
+#include "../Config.h"
 
 WebRTCSenderConnexionHandler::WebRTCSenderConnexionHandler(const WsRoute wsRoute): WebRTCConnexionState(wsRoute){
 }
@@ -17,7 +18,7 @@ void WebRTCSenderConnexionHandler::setupConnection() {
         juce::Logger::outputDebugString("Error initializing logger: " + std::string(e.what()));
     }
     rtc::Configuration config;
-    config.iceServers.emplace_back("stun:stun.l.google.com:19302");
+    config.iceServers.emplace_back(Config::getInstance().rtcStunServer);
 
     peerConnection = std::make_shared<rtc::PeerConnection>(config);
 
@@ -90,10 +91,10 @@ void WebRTCSenderConnexionHandler::setupConnection() {
     });
 
     rtc::Description::Audio newAudioTrack{};
-    newAudioTrack.addOpusCodec(111, "minptime=" +  std::to_string(AudioSettings::getInstance().getLatency()) + ";useinbandfec=1");
-    newAudioTrack.setBitrate(AudioSettings::getInstance().getOpusBitRate()); // Débit binaire en bits par seconde
+    newAudioTrack.addOpusCodec(Config::getInstance().codecPayloadType, "minptime=" +  std::to_string(Config::getInstance().latencyInMs) + ";useinbandfec=" + std::to_string(Config::getInstance().useInBandFec));
+    newAudioTrack.setBitrate(Config::getInstance().opusBitRate); // Débit binaire en bits par seconde
     newAudioTrack.setDirection(rtc::Description::Direction::SendOnly);
-    newAudioTrack.addSSRC(12345, "CNAME");;
+    newAudioTrack.addSSRC(Config::getInstance().ssrc, Config::getInstance().cname);
     audioTrack = peerConnection->addTrack(static_cast<rtc::Description::Media>(newAudioTrack));
     setOffer();
 }

@@ -1,7 +1,6 @@
 #include "WebRTCConnexionState.h"
 #include "../Common/EventManager.h"
 #include "../ThirdParty/json.hpp"
-#include "../AudioSettings.h"
 #include "../Api/SocketRoutes.h"
 #include "../Api/SocketEvents.h"
 

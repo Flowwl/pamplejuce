@@ -1,9 +1,11 @@
 #include "WebRTCReceiverConnexionHandler.h"
+
+#include "../Api/SocketRoutes.h"
 #include "../Common/EventManager.h"
 #include "../ThirdParty/json.hpp"
-#include "../Api/SocketRoutes.h"
-#include <opus.h>
 #include "../Utils/VectorUtils.h"
+#include "../Config.h"
+#include <opus.h>
 
 WebRTCReceiverConnexionHandler::WebRTCReceiverConnexionHandler(const WsRoute wsRoute)
     : WebRTCConnexionState(wsRoute) {
@@ -15,7 +17,7 @@ WebRTCReceiverConnexionHandler::~WebRTCReceiverConnexionHandler() {
 
 void WebRTCReceiverConnexionHandler::setupConnection() {
     rtc::Configuration config;
-    config.iceServers.emplace_back("stun:stun.l.google.com:19302");
+    config.iceServers.emplace_back(Config::getInstance().rtcStunServer);
 
     peerConnection = std::make_shared<rtc::PeerConnection>(config);
 
@@ -38,7 +40,6 @@ void WebRTCReceiverConnexionHandler::setupConnection() {
         }
     });
 
-    // Notifications des changements d'état
     peerConnection->onStateChange([this](rtc::PeerConnection::State state) {
         notifyRTCStateChanged();
         // if (state == rtc::PeerConnection::State::Closed) {
@@ -84,7 +85,7 @@ void WebRTCReceiverConnexionHandler::onWsMessageReceived(const MessageWsReceived
 }
 
 void WebRTCReceiverConnexionHandler::handleOffer(const std::string &sdp) {
-    resetConnection(); // Supposé réinitialiser l'état de la connexion
+    resetConnection();
     if (peerConnection->state() == rtc::PeerConnection::State::Connected) {
         return;
     }
